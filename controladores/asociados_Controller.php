@@ -1,4 +1,5 @@
 <?php 
+	session_start();
 	//conexión a base de datos
 	require_once("../config/conecta.php");
 	//Llamada al modelo
@@ -25,6 +26,18 @@
 				$eventos = new Eventos();
 				$validar_Inscripcion = $eventos->validar_Inscripcion($id_Asociado, $id_Evento);
 				if (!$validar_Inscripcion ) {
+					// ---- CANDADO OTP ----
+					if (!isset($_SESSION['otp_ok'], $_SESSION['otp_aso'], $_SESSION['otp_even'])
+						|| $_SESSION['otp_ok'] !== true
+						|| $_SESSION['otp_aso'] !== $id_Asociado
+						|| $_SESSION['otp_even'] !== $id_Evento) {
+
+						echo "<div class='alert alert-danger' role='alert'>
+								Debes validar tu acceso con el código enviado a tu correo antes de continuar.
+							</div>";
+						exit;
+}
+
 					//mostrar formulario para inscripción
 					echo "
 						<div id='div_Nombre' class='form-group'>
@@ -110,6 +123,117 @@
 				</div>";
 			}
 		break;
+
+		
+		case '8': // validar cédula y devolver pista de correo (JSON)
+			header('Content-Type: application/json; charset=utf-8');
+
+			$id_Asociado = $_GET['id_Asociado'] ?? '';
+			$id_Evento   = $_GET['id_Evento'] ?? '';
+
+			if ($id_Asociado === '' || $id_Evento === '') {
+				http_response_code(400);
+				echo json_encode(["ok"=>false,"msg"=>"Parámetros incompletos."]);
+				exit;
+			}
+
+			$asociados = new Asociados();
+			$info = $asociados->consultar_Asociado($id_Asociado, $id_Evento);
+
+			if (!$info) {
+				http_response_code(404);
+				echo json_encode(["ok"=>false,"msg"=>"Documento no encontrado."]);
+				exit;
+			}
+
+			$correo = trim((string)($info['aso_Correo'] ?? ''));
+			$pista  = $asociados->mascarar_Correo($correo);
+
+			echo json_encode(["ok"=>true,"correo_hint"=>$pista]);
+			exit;
+
+
+		case '9': // validar correo y enviar OTP (JSON)
+			header('Content-Type: application/json; charset=utf-8');
+
+			$id_Asociado = $_POST['id_Asociado'] ?? '';
+			$id_Evento   = $_POST['id_Evento'] ?? '';
+			$correoIn    = trim((string)($_POST['correo'] ?? ''));
+
+			if ($id_Asociado === '' || $id_Evento === '' || $correoIn === '') {
+				http_response_code(400);
+				echo json_encode(["ok"=>false,"msg"=>"Parámetros incompletos."]);
+				exit;
+			}
+
+			$OTP_TTL_MIN = 10; // <-- configurable
+
+			$asociados = new Asociados();
+			$info = $asociados->consultar_Asociado($id_Asociado, $id_Evento);
+
+			if (!$info) {
+				http_response_code(404);
+				echo json_encode(["ok"=>false,"msg"=>"Documento no encontrado."]);
+				exit;
+			}
+
+			$correoBD = strtolower(trim((string)($info['aso_Correo'] ?? '')));
+			if ($correoBD === '' || strtolower($correoIn) !== $correoBD) {
+				http_response_code(401);
+				echo json_encode(["ok"=>false,"msg"=>"El correo no coincide con el registrado."]);
+				exit;
+			}
+
+			$otp = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+
+			$ok = $asociados->crear_OTP($id_Asociado, $id_Evento, $otp, $OTP_TTL_MIN);
+
+			if (!$ok) {
+				http_response_code(500);
+				echo json_encode(["ok"=>false,"msg"=>"No fue posible generar el código."]);
+				exit;
+			}
+
+			// Envío de correo (simple). Si tu servidor no envía correo, aquí luego migramos a PHPMailer+SMTP.
+			$asunto = "Código de acceso al evento";
+			$msg    = "Tu código de acceso es: $otp\n\nVence en $OTP_TTL_MIN minutos.";
+			@mail($correoBD, $asunto, $msg);
+
+			echo json_encode(["ok"=>true,"msg"=>"Te enviamos un código de 6 dígitos a tu correo."]);
+			exit;
+
+
+		case '10': // verificar OTP y abrir sesión (JSON)
+			header('Content-Type: application/json; charset=utf-8');
+
+			$id_Asociado = $_POST['id_Asociado'] ?? '';
+			$id_Evento   = $_POST['id_Evento'] ?? '';
+			$codigo      = preg_replace('/\D+/', '', (string)($_POST['codigo'] ?? ''));
+
+			if ($id_Asociado === '' || $id_Evento === '' || strlen($codigo) !== 6) {
+				http_response_code(400);
+				echo json_encode(["ok"=>false,"msg"=>"Código inválido."]);
+				exit;
+			}
+
+			$asociados = new Asociados();
+			$resp = $asociados->verificar_OTP($id_Asociado, $id_Evento, $codigo);
+
+			if (!$resp['ok']) {
+				http_response_code(401);
+				echo json_encode($resp);
+				exit;
+			}
+
+			// sesión aprobada
+			$_SESSION['otp_ok'] = true;
+			$_SESSION['otp_aso'] = $id_Asociado;
+			$_SESSION['otp_even'] = $id_Evento;
+			$_SESSION['otp_time'] = time();
+
+			echo json_encode(["ok"=>true,"msg"=>"Acceso confirmado."]);
+			exit;
+
 
 		default:
 			echo "Problemas de comunicación, intente nuevamente";

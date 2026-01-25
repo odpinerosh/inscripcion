@@ -143,7 +143,14 @@ function numeros(){
 }
 
 function validar_Documento(){
-    var documento = $('#documento').val()
+    // Si el login OTP está presente, este botón debe disparar el paso 1 del OTP
+    if ($('#correo_login').length && $('#codigo_login').length && $('#div_CorreoLogin').length){
+        paso_Documento_Otp();
+        return;
+    }
+
+    // Fallback (flujo antiguo): entra directo a la inscripción
+    var documento = $('#documento').val();
     if (documento == '') {
         alert('El número de identificación no puede estar vacío.')
     }else{
@@ -171,3 +178,140 @@ function validar_Celular(celular){
     }
 
 }
+
+
+/* =======================================================================
+   LOGIN POR CÓDIGO (OTP) - Cédula -> Correo -> Código 6 dígitos (TTL)
+   Requiere que en el HTML existan:
+   #evento (hidden o select), #documento, #correo_login, #codigo_login,
+   #div_CorreoLogin, #div_CodigoLogin, #div_LoginAlert, #div_LoginOtp
+======================================================================= */
+
+function init_LoginOtp(){
+    // Enter en cédula => solicitar correo
+    $('#documento').on('keypress', function(e){
+        if (e.which === 13) { e.preventDefault(); paso_Documento_Otp(); }
+    });
+
+    // Enter en correo => solicitar código
+    $('#correo_login').on('keypress', function(e){
+        if (e.which === 13) { e.preventDefault(); solicitar_Codigo_Otp(); }
+    });
+
+    // Enter en código => verificar
+    $('#codigo_login').on('keypress', function(e){
+        if (e.which === 13) { e.preventDefault(); verificar_Codigo_Otp(); }
+    });
+}
+
+function ui_LoginAlert(tipo, mensaje){
+    var cls = (tipo === 'ok') ? 'alert alert-success' : 'alert alert-danger';
+    $('#div_LoginAlert').html("<div class='"+cls+"' role='alert'>"+mensaje+"</div>");
+}
+
+function paso_Documento_Otp(){
+    var evento = $('#evento').val();
+    var documento = ($('#documento').val() || '').trim();
+
+    if (documento === '') {
+        ui_LoginAlert('err', 'La cédula no puede estar vacía.');
+        return;
+    }
+
+    // Valida que exista para este evento y devuelve un "hint" del correo
+    $.ajax({
+        type: "GET",
+        url: "controladores/asociados_Controller.php",
+        data: { accion: 8, id_Asociado: documento, id_Evento: evento },
+        dataType: "json",
+        success: function(resp){
+            if (!resp || !resp.ok){
+                ui_LoginAlert('err', (resp && resp.message) ? resp.message : 'No fue posible validar la cédula.');
+                return;
+            }
+            $('#div_CorreoLogin').show();
+            $('#correo_login').focus();
+            if (resp.correoHint){
+                ui_LoginAlert('ok', "Ahora escribe tu correo (pista: "+resp.correoHint+").");
+            }else{
+                ui_LoginAlert('ok', "Ahora escribe tu correo electrónico.");
+            }
+        },
+        error: function(){
+            ui_LoginAlert('err', 'Error de comunicación. Intenta nuevamente.');
+        }
+    });
+}
+
+function solicitar_Codigo_Otp(){
+    var evento = $('#evento').val();
+    var documento = ($('#documento').val() || '').trim();
+    var correo = ($('#correo_login').val() || '').trim();
+
+    if (documento === '') { ui_LoginAlert('err', 'La cédula no puede estar vacía.'); return; }
+    if (!validar_Correo(correo)) { ui_LoginAlert('err', 'Ingresa un correo válido.'); return; }
+
+    $('#div_CodigoLogin').hide();
+    ui_LoginAlert('ok', 'Validando correo y enviando código...');
+
+    $.ajax({
+        type: "POST",
+        url: "controladores/asociados_Controller.php?accion=9",
+        data: { id_Asociado: documento, id_Evento: evento, correo: correo },
+        dataType: "json",
+        success: function(resp){
+            if (!resp || !resp.ok){
+                ui_LoginAlert('err', (resp && resp.message) ? resp.message : 'No fue posible enviar el código.');
+                return;
+            }
+            $('#div_CodigoLogin').show();
+            $('#codigo_login').val('').focus();
+            ui_LoginAlert('ok', "Listo. Te enviamos un código de 6 dígitos. Vigencia: "+resp.ttlMin+" minutos.");
+        },
+        error: function(){
+            ui_LoginAlert('err', 'Error de comunicación. Intenta nuevamente.');
+        }
+    });
+}
+
+function verificar_Codigo_Otp(){
+    var evento = $('#evento').val();
+    var documento = ($('#documento').val() || '').trim();
+    var codigo = ($('#codigo_login').val() || '').trim();
+
+    if (!/^\d{6}$/.test(codigo)){
+        ui_LoginAlert('err', 'El código debe tener 6 dígitos.');
+        return;
+    }
+
+    $.ajax({
+        type: "POST",
+        url: "controladores/asociados_Controller.php?accion=10",
+        data: { id_Asociado: documento, id_Evento: evento, codigo: codigo },
+        dataType: "json",
+        success: function(resp){
+            if (!resp || !resp.ok){
+                ui_LoginAlert('err', (resp && resp.message) ? resp.message : 'Código inválido.');
+                return;
+            }
+
+            // Éxito: oculta el login y carga el flujo actual (inscripción)
+            ui_LoginAlert('ok', 'Acceso exitoso. Cargando...');
+            if ($('#div_LoginOtp').length){ $('#div_LoginOtp').hide(); }
+
+            // Reutiliza el flujo existente: trae datos y formulario
+            enviar_Documento();
+        },
+        error: function(){
+            ui_LoginAlert('err', 'Error de comunicación. Intenta nuevamente.');
+        }
+    });
+}
+
+// Inicializa automáticamente si el HTML tiene los campos del login
+$(document).ready(function(){
+    if ($('#documento').length && $('#correo_login').length && $('#codigo_login').length){
+        init_LoginOtp();
+    }
+});
+

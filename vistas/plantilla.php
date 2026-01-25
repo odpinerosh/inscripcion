@@ -84,19 +84,48 @@
             <div class="container-fluid dashboard-content" style="max-width: 400px;background-color: #e2f2e4"> 
                 <div style="margin: auto; text-align: center"><h3>INSCRIPCIÓN</h3></div>
                 <hr>             
-                <form>
+                <form id="inscripcion" name="inscripcion" autocomplete="off">
+
+                    <!-- Contenedor login (se oculta cuando el OTP valida) -->
+                    <div id="div_LoginOtp">
                     <div class='form-group'>
                         <h5>Número de documento</h5>
                         <span class='input-group-prepend'>
-                            <input type='text' name='documento' class='form-control' placeholder='Ingrese el número' id='documento' onKeyDown='numeros()'></input>
+                            <input type='text' name='documento' class='form-control' placeholder='Ingrese el número y presione Enter' id='documento' onKeyDown='numeros()' inputmode='numeric'></input>
                             <span class='input-group-text' style ='background-color:#08a750;color:#fff101'><i class='fas fa-id-card'></i></span>
                         </span>
                     </div>
-                </form>
-                <form id="inscripcion" name="inscripcion">
-                    <div id='div_Validar' class='form-group' style='text-align: center'>
-                        <input class='btn btn-success' type='button' name='validar' id='validar' value='Validar documento' class='form-control' style='font-size: large; font-weight:bold' onclick="validar_Documento()">
+
+                    <!-- Paso 2: pedir correo (se muestra después de Enter en documento) -->
+                    <div id='div_CorreoLogin' class='form-group' style='display:none'>
+                        <h5>Correo electrónico</h5>
+                        <span class='input-group-prepend'>
+                            <input type='text' name='correo_login' class='form-control' placeholder='Ingrese su correo y presione Enter' id='correo_login' autocapitalize='none' autocomplete='off'></input>
+                            <span class='input-group-text' style ='background-color:#08a750;color:#fff101'><i class='fas fa-at'></i></span>
+                        </span>
+                        <small id='correo_hint' class='text-muted' style='display:block;margin-top:6px;'></small>
                     </div>
+
+                    <!-- Paso 3: pedir código OTP -->
+                    <div id='div_CodigoLogin' class='form-group' style='display:none'>
+                        <h5>Código de verificación (6 dígitos)</h5>
+                        <span class='input-group-prepend'>
+                            <input type='text' name='codigo_login' class='form-control' placeholder='Ingrese el código y presione Enter' id='codigo_login' maxlength='6' inputmode='numeric'></input>
+                            <span class='input-group-text' style ='background-color:#08a750;color:#fff101'><i class='fas fa-key'></i></span>
+                        </span>
+                        <small class='text-muted' style='display:block;margin-top:6px;'>El código vence en 10 minutos.</small>
+                    </div>
+
+                    <div id='div_LoginAlert' class='form-group' style='margin-top:8px;'></div>
+
+                    <!-- Botón opcional (deja Enter como flujo principal). Puedes ocultarlo si quieres. -->
+                    <div id='div_Validar' class='form-group' style='text-align: center'>
+                        <!--input class='btn btn-success' type='button' name='validar' id='validar' value='Continuar' class='form-control' style='font-size: large; font-weight:bold' onclick="validar_Documento()"-->
+                        <button id="btnContinuarOtp" type="button" class="btn btn-primary">Continuar</button>
+                    </div>
+                    
+                    </div><!-- /div_LoginOtp -->
+
                     <div id="div_Agencias" class="form-group" style="display: none">
                       
                     </div>
@@ -111,11 +140,12 @@
             </div>
         </div>
     </div>
-    <div class="btn-youtube" title="Regresar">
-        <a href="https://www.cooptraiss.com" target="_blank">
-            <!--<a href="#" class="btn btn-rounded btn-success">Regresar<div></div></a>-->
+    <div class="text-center my-3">
+        <a class="btn btn-outline-success" href="https://www.cooptraiss.com" target="_blank" rel="noopener">
+            Regresar
         </a>
     </div>
+
     <footer style="background-color: #289548">
         <div style="text-align: center; margin-top: 10px; color: white">  
             COOPTRAISS 2026 - Unidad de Tecnología
@@ -129,9 +159,9 @@
     <script src="assets/vendor/jquery/jquery-3.3.1.min.js"></script>
     <script src="assets/vendor/bootstrap/js/bootstrap.bundle.js"></script>
     <script src="assets/vendor/slimscroll/jquery.slimscroll.js"></script>
-    <script src="assets/libs/js/main-js.js"></script>
-    <script src="assets/vendor/timeline/js/main.js"></script>
-    <script src="js/auditoria.js"></script>
+    <!--script src="assets/libs/js/main-js.js"></script-->
+    <!--script src="assets/vendor/timeline/js/main.js"></script-->
+    <script src="js/auditoria.js?v=20260125_1"></script>
 </body>
 
  
