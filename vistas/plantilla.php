@@ -121,8 +121,14 @@
                         </span>
                         <small class='text-muted' style='display:block;margin-top:6px;'>El código vence en 10 minutos.</small>
                         <button id="btnValidarOtp" type="button" class="btn btn-success mt-2">
-                        Validar código
-                        </button>                        
+                            Validar código
+                        </button>
+
+                        <button id="btnReenviarOtp" type="button" class="btn btn-outline-primary mt-2">
+                        Reenviar código
+                        </button>
+                        <small id="otpCooldownMsg" class="text-muted" style="display:block;margin-top:6px;"></small>
+                        
                     </div>
 
                     <div id='div_LoginAlert' class='form-group' style='margin-top:8px;'></div>

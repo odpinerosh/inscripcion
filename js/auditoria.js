@@ -211,38 +211,46 @@ function ui_LoginAlert(tipo, mensaje){
 }
 
 function paso_Documento_Otp(){
-    var evento = $('#evento').val();
-    var documento = ($('#documento').val() || '').trim();
+  var evento = $('#evento').val();
+  var documento = ($('#documento').val() || '').trim();
 
-    if (documento === '') {
-        ui_LoginAlert('err', 'La cédula no puede estar vacía.');
+  if (documento === '') {
+    ui_LoginAlert('err', 'La cédula no puede estar vacía.');
+    return;
+  }
+
+  $.ajax({
+    type: "GET",
+    url: "controladores/asociados_Controller.php",
+    data: { accion: 8, id_Asociado: documento, id_Evento: evento },
+    dataType: "json",
+    success: function(resp){
+      if (!resp || !resp.ok){
+        ui_LoginAlert('err', (resp && (resp.message || resp.msg)) ? (resp.message || resp.msg) : 'No fue posible validar la cédula.');
         return;
-    }
+      }
 
-    // Valida que exista para este evento y devuelve un "hint" del correo
-    $.ajax({
-        type: "GET",
-        url: "controladores/asociados_Controller.php",
-        data: { accion: 8, id_Asociado: documento, id_Evento: evento },
-        dataType: "json",
-        success: function(resp){
-            if (!resp || !resp.ok){
-                ui_LoginAlert('err', (resp && resp.message) ? resp.message : 'No fue posible validar la cédula.');
-                return;
-            }
-            $('#div_CorreoLogin').show();
-            $('#correo_login').focus();
-            if (resp.correoHint){
-                ui_LoginAlert('ok', "Ahora escribe tu correo (pista: "+resp.correoHint+").");
-            }else{
-                ui_LoginAlert('ok', "Ahora escribe tu correo electrónico.");
-            }
-        },
-        error: function(){
-            ui_LoginAlert('err', 'Error de comunicación. Intenta nuevamente.');
-        }
-    });
+      // Asegura que estás en Paso 2 (correo)
+      $('#div_CodigoLogin').hide();          // si ya estaba visible por un intento previo
+      $('#div_CorreoLogin').show();
+
+      // Habilita el botón Enviar código al entrar al Paso 2
+      $('#btnEnviarOtp').prop('disabled', false);
+
+      $('#correo_login').focus();
+
+      if (resp.correoHint){
+        ui_LoginAlert('ok', "Ahora escribe tu correo (pista: "+resp.correoHint+").");
+      }else{
+        ui_LoginAlert('ok', "Ahora escribe tu correo electrónico.");
+      }
+    },
+    error: function(xhr){
+      mostrarErrorAjax(xhr, 'Error de comunicación. Intenta nuevamente.');
+    }
+  });
 }
+
 
 function solicitar_Codigo_Otp(){
   var evento = ($('#evento').val() || '').trim();
@@ -256,29 +264,36 @@ function solicitar_Codigo_Otp(){
   $('#div_CodigoLogin').hide();
   ui_LoginAlert('ok', 'Validando correo y enviando código...');
 
+  // Evita doble clic antes de que el servidor responda
+  $('#btnEnviarOtp').prop('disabled', true);
+
   $.ajax({
     type: "POST",
     url: "controladores/asociados_Controller.php?accion=9",
     dataType: "json",
-    data: { id_Asociado: documento, id_Evento: evento, correo: correo }, // <-- FIX
+    data: { id_Asociado: documento, id_Evento: evento, correo: correo },
     success: function(resp){
       if(resp && resp.ok){
-        // Mostrar paso 3 y enfocar código
         $('#div_CodigoLogin').show();
         $('#codigo_login').val('').focus();
 
-        // Mensaje con TTL (si viene)
         var ttl = (resp.ttlMin != null) ? resp.ttlMin : 10;
         ui_LoginAlert('ok', (resp.message || resp.msg || 'Te enviamos un código de 6 dígitos.') + ' Vigencia: ' + ttl + ' minutos.');
+
+        iniciarCooldownOtp(60); // deshabilita Enviar + Reenviar por 60s
       } else {
+        // Falló validación (correo no coincide, etc.)
+        $('#btnEnviarOtp').prop('disabled', false);
         ui_LoginAlert('err', (resp && (resp.message || resp.msg)) ? (resp.message || resp.msg) : "No fue posible enviar el código.");
       }
     },
     error: function(xhr){
+      $('#btnEnviarOtp').prop('disabled', false);
       mostrarErrorAjax(xhr, "Error enviando el código. Intenta nuevamente.");
     }
   });
 }
+
 
 function verificar_Codigo_Otp(){
   var evento = ($('#evento').val() || '').trim();
@@ -311,7 +326,39 @@ function verificar_Codigo_Otp(){
   });
 }
 
+// ===== Cooldown OTP (deshabilita Enviar y Reenviar) =====
+var otpCooldownUntil = 0;
 
+function iniciarCooldownOtp(segundos){
+  otpCooldownUntil = Date.now() + (segundos * 1000);
+
+  // Deshabilita ambos
+  $("#btnEnviarOtp").prop("disabled", true);
+  $("#btnReenviarOtp").prop("disabled", true);
+
+  tickCooldownOtp();
+}
+
+function tickCooldownOtp(){
+  var leftMs = otpCooldownUntil - Date.now();
+  if (leftMs <= 0){
+    $("#btnEnviarOtp").prop("disabled", false);
+    $("#btnReenviarOtp").prop("disabled", false);
+    $("#otpCooldownMsg").text("");
+    return;
+  }
+  var left = Math.ceil(leftMs / 1000);
+  $("#otpCooldownMsg").text("Puedes reenviar en " + left + "s.");
+  setTimeout(tickCooldownOtp, 400);
+}
+
+// Click: reenviar = reutiliza el envío normal
+$(document).on("click", "#btnReenviarOtp", function(e){
+  e.preventDefault();
+  solicitar_Codigo_Otp();
+});
+
+// ===== Manejo de errores AJAX =====
 
 function mostrarErrorAjax(xhr, fallback) {
   // 1) Si jQuery ya parseó JSON
