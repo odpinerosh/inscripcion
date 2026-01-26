@@ -256,23 +256,22 @@ function solicitar_Codigo_Otp(){
     ui_LoginAlert('ok', 'Validando correo y enviando código...');
 
     $.ajax({
-        type: "POST",
-        url: "controladores/asociados_Controller.php?accion=9",
-        data: { id_Asociado: documento, id_Evento: evento, correo: correo },
-        dataType: "json",
-        success: function(resp){
-            if (!resp || !resp.ok){
-                ui_LoginAlert('err', (resp && resp.message) ? resp.message : 'No fue posible enviar el código.');
-                return;
-            }
-            $('#div_CodigoLogin').show();
-            $('#codigo_login').val('').focus();
-            ui_LoginAlert('ok', "Listo. Te enviamos un código de 6 dígitos. Vigencia: "+resp.ttlMin+" minutos.");
-        },
-        error: function(){
-            ui_LoginAlert('err', 'Error de comunicación. Intenta nuevamente.');
+    type: "POST",
+    url: "controladores/asociados_Controller.php?accion=9",
+    dataType: "json",
+    data: { id_Asociado: doc, id_Evento: ev, correo: correo },
+    success: function(resp){
+        if(resp.ok){
+        // ... tu flujo actual OK
+        } else {
+        ui_LoginAlert('error', resp.message || resp.msg || "No fue posible enviar el código.");
         }
+    },
+    error: function(xhr){
+        mostrarErrorAjax(xhr, "Error enviando el código. Intenta nuevamente.");
+    }
     });
+
 }
 
 function verificar_Codigo_Otp(){
@@ -303,11 +302,31 @@ function verificar_Codigo_Otp(){
             // Reutiliza el flujo existente: trae datos y formulario
             enviar_Documento();
         },
-        error: function(){
-            ui_LoginAlert('err', 'Error de comunicación. Intenta nuevamente.');
+        error: function(xhr){
+        mostrarErrorAjax(xhr, "Error validando el código. Intenta nuevamente.");
         }
     });
 }
+
+
+function mostrarErrorAjax(xhr, fallback) {
+  // 1) Si jQuery ya parseó JSON
+  if (xhr && xhr.responseJSON) {
+    const m = xhr.responseJSON.message || xhr.responseJSON.msg;
+    if (m) return ui_LoginAlert('error', m);
+  }
+
+  // 2) Intentar parsear el texto como JSON
+  try {
+    const obj = JSON.parse(xhr.responseText || "{}");
+    const m = obj.message || obj.msg;
+    if (m) return ui_LoginAlert('error', m);
+  } catch (e) {}
+
+  // 3) Fallback
+  ui_LoginAlert('error', fallback || "Error de comunicación. Intenta nuevamente.");
+}
+
 
 // Inicializa automáticamente si el HTML tiene los campos del login
 $(document).ready(function(){
