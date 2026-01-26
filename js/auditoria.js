@@ -245,68 +245,72 @@ function paso_Documento_Otp(){
 }
 
 function solicitar_Codigo_Otp(){
-    var evento = $('#evento').val();
-    var documento = ($('#documento').val() || '').trim();
-    var correo = ($('#correo_login').val() || '').trim();
+  var evento = ($('#evento').val() || '').trim();
+  var documento = ($('#documento').val() || '').trim();
+  var correo = ($('#correo_login').val() || '').trim();
 
-    if (documento === '') { ui_LoginAlert('err', 'La cédula no puede estar vacía.'); return; }
-    if (!validar_Correo(correo)) { ui_LoginAlert('err', 'Ingresa un correo válido.'); return; }
+  if (documento === '') { ui_LoginAlert('err', 'La cédula no puede estar vacía.'); return; }
+  if (evento === '') { ui_LoginAlert('err', 'No se encontró el evento.'); return; }
+  if (!validar_Correo(correo)) { ui_LoginAlert('err', 'Ingresa un correo válido.'); return; }
 
-    $('#div_CodigoLogin').hide();
-    ui_LoginAlert('info', 'Validando correo y enviando código...');
+  $('#div_CodigoLogin').hide();
+  ui_LoginAlert('ok', 'Validando correo y enviando código...');
 
-    $.ajax({
+  $.ajax({
     type: "POST",
     url: "controladores/asociados_Controller.php?accion=9",
     dataType: "json",
-    data: { id_Asociado: doc, id_Evento: evento, correo: correo },
+    data: { id_Asociado: documento, id_Evento: evento, correo: correo }, // <-- FIX
     success: function(resp){
-        if(resp.ok){
-        // ... tu flujo actual OK
-        } else {
-        ui_LoginAlert('error', resp.message || resp.msg || "No fue posible enviar el código.");
-        }
+      if(resp && resp.ok){
+        // Mostrar paso 3 y enfocar código
+        $('#div_CodigoLogin').show();
+        $('#codigo_login').val('').focus();
+
+        // Mensaje con TTL (si viene)
+        var ttl = (resp.ttlMin != null) ? resp.ttlMin : 10;
+        ui_LoginAlert('ok', (resp.message || resp.msg || 'Te enviamos un código de 6 dígitos.') + ' Vigencia: ' + ttl + ' minutos.');
+      } else {
+        ui_LoginAlert('err', (resp && (resp.message || resp.msg)) ? (resp.message || resp.msg) : "No fue posible enviar el código.");
+      }
     },
     error: function(xhr){
-        mostrarErrorAjax(xhr, "Error enviando el código. Intenta nuevamente.");
+      mostrarErrorAjax(xhr, "Error enviando el código. Intenta nuevamente.");
     }
-    });
-
+  });
 }
 
 function verificar_Codigo_Otp(){
-    var evento = $('#evento').val();
-    var documento = ($('#documento').val() || '').trim();
-    var codigo = ($('#codigo_login').val() || '').trim();
+  var evento = ($('#evento').val() || '').trim();
+  var documento = ($('#documento').val() || '').trim();
+  var codigo = ($('#codigo_login').val() || '').trim();
 
-    if (!/^\d{6}$/.test(codigo)){
-        ui_LoginAlert('err', 'El código debe tener 6 dígitos.');
+  if (!/^\d{6}$/.test(codigo)){
+    ui_LoginAlert('err', 'El código debe tener 6 dígitos.');
+    return;
+  }
+
+  $.ajax({
+    type: "POST",
+    url: "controladores/asociados_Controller.php?accion=10",
+    dataType: "json",
+    data: { id_Asociado: documento, id_Evento: evento, codigo: codigo },
+    success: function(resp){
+      if (!resp || !resp.ok){
+        ui_LoginAlert('err', (resp && (resp.message || resp.msg)) ? (resp.message || resp.msg) : 'Código inválido.');
         return;
+      }
+
+      ui_LoginAlert('ok', 'Acceso exitoso. Cargando...');
+      if ($('#div_LoginOtp').length){ $('#div_LoginOtp').hide(); }
+      enviar_Documento();
+    },
+    error: function(xhr){
+      mostrarErrorAjax(xhr, "Error validando el código. Intenta nuevamente.");
     }
-
-    $.ajax({
-        type: "POST",
-        url: "controladores/asociados_Controller.php?accion=10",
-        data: { id_Asociado: documento, id_Evento: evento, codigo: codigo },
-        dataType: "json",
-        success: function(resp){
-            if (!resp || !resp.ok){
-                ui_LoginAlert('err', (resp && resp.message) ? resp.message : 'Código inválido.');
-                return;
-            }
-
-            // Éxito: oculta el login y carga el flujo actual (inscripción)
-            ui_LoginAlert('ok', 'Acceso exitoso. Cargando...');
-            if ($('#div_LoginOtp').length){ $('#div_LoginOtp').hide(); }
-
-            // Reutiliza el flujo existente: trae datos y formulario
-            enviar_Documento();
-        },
-        error: function(xhr){
-        mostrarErrorAjax(xhr, "Error validando el código. Intenta nuevamente.");
-        }
-    });
+  });
 }
+
 
 
 function mostrarErrorAjax(xhr, fallback) {
