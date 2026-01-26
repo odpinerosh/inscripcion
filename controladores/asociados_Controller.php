@@ -6,12 +6,39 @@
 	require_once("../modelos/asociados_Model.php");
 	require_once("../modelos/eventos_Model.php");
 
+	// Función para validar sesión OTP
+	function requireOtpSession($aso, $even) {
+		if (empty($_SESSION['otp_ok']) || empty($_SESSION['otp_expires'])) {
+			return [false, "Debes validar tu acceso con el código enviado a tu correo antes de continuar."];
+		}
+		if (time() > (int)$_SESSION['otp_expires']) {
+			// expirada: limpiar
+			$_SESSION = [];
+			if (session_status() === PHP_SESSION_ACTIVE) session_destroy();
+			return [false, "Tu sesión venció. Solicita un nuevo código e inténtalo de nuevo."];
+		}
+		if ((string)($_SESSION['otp_aso'] ?? '') !== (string)$aso || (string)($_SESSION['otp_even'] ?? '') !== (string)$even) {
+			return [false, "Sesión inválida para este documento/evento."];
+		}
+		return [true, ""];
+	}
+
+
 	$accion = $_GET['accion'];
 
 	switch ($accion) {
 		case '1'://Consultar asociado
 			$id_Asociado = $_GET['id_Asociado'];
 			$id_Evento = $_GET['id_Evento'];
+
+			// Validar sesión OTP
+			list($okSess, $msgSess) = requireOtpSession($id_Asociado, $id_Evento);
+			if (!$okSess) {
+			echo "<div class='alert alert-danger' role='alert'>{$msgSess}</div>";
+			exit;
+			}
+
+			//consultar asociado
 			$asociados = New Asociados();
 			$consultar_Asociado = $asociados->consultar_Asociado($id_Asociado, $id_Evento);
 			if (!$consultar_Asociado) {
@@ -26,17 +53,6 @@
 				$eventos = new Eventos();
 				$validar_Inscripcion = $eventos->validar_Inscripcion($id_Asociado, $id_Evento);
 				if (!$validar_Inscripcion ) {
-					// ---- CANDADO OTP ----
-					if (!isset($_SESSION['otp_ok'], $_SESSION['otp_aso'], $_SESSION['otp_even'])
-						|| $_SESSION['otp_ok'] !== true
-						|| $_SESSION['otp_aso'] !== $id_Asociado
-						|| $_SESSION['otp_even'] !== $id_Evento) {
-
-						echo "<div class='alert alert-danger' role='alert'>
-								Debes validar tu acceso con el código enviado a tu correo antes de continuar.
-							</div>";
-						exit;
-}
 
 					//mostrar formulario para inscripción
 					echo "
@@ -71,14 +87,14 @@
 	                    <div id='div_Celular' class='form-group' style='display: none'>
 	                        <h5>Número de celular</h5>
 	                        <span class='input-group-prepend'>
-	                            <input type='text' name='celular' id='celular' class='form-control' placeholder='Ingrese el número' onKeyDown='numeros()' maxlength='10' value='".$consultar_Asociado['aso_Celular']."' readonly></input>
+	                            <input type='text' name='celular' id='celular' class='form-control' placeholder='Ingrese el número' onKeyDown='numeros(event)' maxlength='10' value='".$consultar_Asociado['aso_Celular']."' readonly></input>
 	                            <span class='input-group-text' style ='background-color:#08a750;color:#fff101'><i class='fas fa-phone'></i></span>
 	                        </span>
 	                    </div><br>
 	                    <div id='div_Participante' class='form-group' style='display: none'>
 	                        <h5>Participante Id</h5>
 	                        <span class='input-group-prepend'>
-	                            <input type='text' name='participante' id='participante' class='form-control' placeholder='Ingrese el número' onKeyDown='numeros()' maxlength='10' value='".$consultar_Asociado['part_Id']."' readonly></input>
+	                            <input type='text' name='participante' id='participante' class='form-control' placeholder='Ingrese el número' onKeyDown='numeros(event)' maxlength='10' value='".$consultar_Asociado['part_Id']."' readonly></input>
 	                            <span class='input-group-text' style ='background-color:#08a750;color:#fff101'><i class='fas fa-phone'></i></span>
 	                        </span>
 	                    </div>
@@ -257,14 +273,28 @@
 				exit;
 			}
 
-			// sesión aprobada
-			$_SESSION['otp_ok'] = true;
-			$_SESSION['otp_aso'] = $id_Asociado;
-			$_SESSION['otp_even'] = $id_Evento;
-			$_SESSION['otp_time'] = time();
 
-			echo json_encode(["ok"=>true,"msg"=>"Acceso confirmado."]);
+			// sesión aprobada (con expiración)
+			$OTP_SESSION_TTL_MIN = 20; // configurable: vigencia de la sesión (ej. 20 min)
+
+			session_regenerate_id(true); // evita session fixation
+
+			$_SESSION['otp_ok']      = true;
+			$_SESSION['otp_aso']     = (string)$id_Asociado;
+			$_SESSION['otp_even']    = (string)$id_Evento;
+			$_SESSION['otp_time']    = time();
+			$_SESSION['otp_expires'] = time() + ($OTP_SESSION_TTL_MIN * 60);
+
+			// (Opcional) amarrar a user-agent (útil, pero puede molestar si cambian de navegador)
+			// $_SESSION['otp_ua'] = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 200);
+
+			echo json_encode([
+			"ok" => true,
+			"msg" => "Acceso confirmado.",
+			"sessionTtlMin" => $OTP_SESSION_TTL_MIN
+			]);
 			exit;
+
 
 
 		default:
