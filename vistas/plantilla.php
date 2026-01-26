@@ -9,7 +9,7 @@
     <link href="images/favicon_cooptraiss.png" rel="shortcut icon" type="image/vnd.microsoft.icon">
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="assets/vendor/bootstrap/css/bootstrap.min.css">
-    <link rel="stylesheet" href="css/boton_Iniciar.css">
+    <!--link rel="stylesheet" href="css/boton_Iniciar.css"-->
     <link href="assets/vendor/fonts/circular-std/style.css" rel="stylesheet">
     <link rel="stylesheet" href="assets/libs/css/style.css">
     <link rel="stylesheet" href="assets/vendor/fonts/fontawesome/css/fontawesome-all.css">
@@ -80,6 +80,9 @@
             <div style="text-align: center">
                 <h3>INSCRIPCION DE DELEGADOS<br>2026</h3>
             </div>
+            <div style="position:fixed;bottom:10px;right:10px;z-index:99999;background:#000;color:#fff;padding:6px 10px;font-size:12px;border-radius:6px;opacity:.75;">
+                plantilla.php :: OTP_TEST :: <?php echo date('Y-m-d H:i:s'); ?>
+            </div>
             <input type='text' name='evento' class='form-control' id='evento' value='1' style="display: none" readonly></input> 
             <div class="container-fluid dashboard-content" style="max-width: 400px;background-color: #e2f2e4"> 
                 <div style="margin: auto; text-align: center"><h3>INSCRIPCIÓN</h3></div>
@@ -91,7 +94,7 @@
                     <div class='form-group'>
                         <h5>Número de documento</h5>
                         <span class='input-group-prepend'>
-                            <input type='text' name='documento' class='form-control' placeholder='Ingrese el número y presione Enter' id='documento' onKeyDown='numeros()' inputmode='numeric'></input>
+                            <input type='text' name='documento' class='form-control' placeholder='Ingrese el número y presione Enter' id='documento' onKeyDown='numeros(event)' inputmode='numeric'></input>
                             <span class='input-group-text' style ='background-color:#08a750;color:#fff101'><i class='fas fa-id-card'></i></span>
                         </span>
                     </div>
@@ -100,20 +103,26 @@
                     <div id='div_CorreoLogin' class='form-group' style='display:none'>
                         <h5>Correo electrónico</h5>
                         <span class='input-group-prepend'>
-                            <input type='text' name='correo_login' class='form-control' placeholder='Ingrese su correo y presione Enter' id='correo_login' autocapitalize='none' autocomplete='off'></input>
+                            <input type='text' name='correo_login' class='form-control' placeholder='Ingrese su correo' id='correo_login' autocapitalize='none' autocomplete='off'></input>
                             <span class='input-group-text' style ='background-color:#08a750;color:#fff101'><i class='fas fa-at'></i></span>
                         </span>
                         <small id='correo_hint' class='text-muted' style='display:block;margin-top:6px;'></small>
+                        <button id="btnEnviarOtp" type="button" class="btn btn-primary mt-2">
+                            Enviar código
+                        </button>
                     </div>
 
                     <!-- Paso 3: pedir código OTP -->
                     <div id='div_CodigoLogin' class='form-group' style='display:none'>
                         <h5>Código de verificación (6 dígitos)</h5>
                         <span class='input-group-prepend'>
-                            <input type='text' name='codigo_login' class='form-control' placeholder='Ingrese el código y presione Enter' id='codigo_login' maxlength='6' inputmode='numeric'></input>
+                            <input type='text' name='codigo_login' class='form-control' placeholder='Ingrese el código enviado a su correo' id='codigo_login' maxlength='6' inputmode='numeric'></input>
                             <span class='input-group-text' style ='background-color:#08a750;color:#fff101'><i class='fas fa-key'></i></span>
                         </span>
                         <small class='text-muted' style='display:block;margin-top:6px;'>El código vence en 10 minutos.</small>
+                        <button id="btnValidarOtp" type="button" class="btn btn-success mt-2">
+                        Validar código
+                        </button>                        
                     </div>
 
                     <div id='div_LoginAlert' class='form-group' style='margin-top:8px;'></div>

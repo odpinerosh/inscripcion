@@ -123,24 +123,25 @@ function realizar_Inscripcion(){
 }
 
 
-function numeros(){
-    if(event.shiftKey) {
-        event.preventDefault();
-    }
+function numeros(e){
+  // Teclas permitidas
+  const allow = [
+    "Enter","Tab","Backspace","Delete",
+    "ArrowLeft","ArrowRight","ArrowUp","ArrowDown",
+    "Home","End"
+  ];
+  if (allow.includes(e.key)) return;
 
-    if (event.keyCode == 46 || event.keyCode == 8) {
-    }else {
-        if (event.keyCode < 95) {
-          if (event.keyCode < 48 || event.keyCode > 57) {
-                event.preventDefault();
-            }
-        }else {
-            if (event.keyCode < 96 || event.keyCode > 105) {
-                event.preventDefault();
-            }
-        }
-    }      
+  // Permitir Ctrl/Cmd + (C,V,X,A)
+  if (e.ctrlKey || e.metaKey) return;
+
+  // Solo dígitos
+  if (!/^\d$/.test(e.key)) {
+    e.preventDefault();
+  }
 }
+
+
 
 function validar_Documento(){
     // Si el login OTP está presente, este botón debe disparar el paso 1 del OTP
@@ -313,5 +314,44 @@ $(document).ready(function(){
     if ($('#documento').length && $('#correo_login').length && $('#codigo_login').length){
         init_LoginOtp();
     }
+});
+
+$(document).on('click', '#btnContinuarOtp', function(e){
+  e.preventDefault();
+  paso_Documento_Otp(); // inicia OTP
+});
+
+
+// ===== Parche: handlers delegados para evitar que "Enter" se pierda =====
+$(document).on("keydown", "#correo_login", function (e) {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    solicitar_Codigo_Otp(); 
+  }
+});
+
+$(document).on("keydown", "#codigo_login", function (e) {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    verificar_Codigo_Otp(); 
+  }
+});
+
+// (Opcional) click explícito para enviar OTP (paso 2)
+$(document).on("click", "#btnEnviarOtp", function(e){
+  e.preventDefault();
+  solicitar_Codigo_Otp();
+});
+
+// Click para enviar OTP (paso 2)
+$(document).on("click", "#btnEnviarOtp", function(e){
+  e.preventDefault();
+  solicitar_Codigo_Otp();  
+});
+
+// Click para verificar OTP (paso 3)
+$(document).on("click", "#btnValidarOtp", function(e){
+  e.preventDefault();
+  verificar_Codigo_Otp();   
 });
 
