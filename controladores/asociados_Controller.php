@@ -194,12 +194,17 @@
 				exit;
 			}
 
-			// Envío de correo (simple). Si tu servidor no envía correo, aquí luego migramos a PHPMailer+SMTP.
+			// Envío de correo (simple). 
 			$asunto = "Código de acceso al evento";
 			$msg    = "Tu código de acceso es: $otp\n\nVence en $OTP_TTL_MIN minutos.";
 			@mail($correoBD, $asunto, $msg);
 
-			echo json_encode(["ok"=>true,"msg"=>"Te enviamos un código de 6 dígitos a tu correo."]);
+			echo json_encode([
+			"ok" => true,
+			"msg" => "Te enviamos un código de 6 dígitos a tu correo.",
+			"message" => "Te enviamos un código de 6 dígitos a tu correo.",
+			"ttlMin" => $OTP_TTL_MIN
+			]);
 			exit;
 
 
