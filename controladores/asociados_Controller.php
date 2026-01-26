@@ -154,6 +154,9 @@
 
 
 		case '9': // validar correo y enviar OTP (JSON)
+			$OTP_TTL_MIN = 10; // duración del OTP en minutos
+			$COOLDOWN_SEC = 60; // segundos para reenviar OTP
+			
 			header('Content-Type: application/json; charset=utf-8');
 
 			$id_Asociado = $_POST['id_Asociado'] ?? '';
@@ -165,8 +168,6 @@
 				echo json_encode(["ok"=>false,"msg"=>"Parámetros incompletos."]);
 				exit;
 			}
-
-			$OTP_TTL_MIN = 10; // <-- configurable
 
 			$asociados = new Asociados();
 			$info = $asociados->consultar_Asociado($id_Asociado, $id_Evento);
@@ -184,8 +185,22 @@
 				exit;
 			}
 
-			$otp = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+			$cool = $asociados->validarCooldownOtp($id_Asociado, $id_Evento, $COOLDOWN_SEC);
+			if (!$cool["ok"]) {
+				http_response_code(429);
+				echo json_encode([
+					"ok" => false,
+					"msg" => "Espera {$cool['wait']} segundos para reenviar el código.",
+					"waitSec" => (int)$cool["wait"]
+				]);
+				exit;
+			}
+			
+			// invalidar OTPs previos
+			$asociados->invalidarOtpsPrevios($id_Asociado, $id_Evento);
 
+			// generar OTP
+			$otp = str_pad((string)random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 			$ok = $asociados->crear_OTP($id_Asociado, $id_Evento, $otp, $OTP_TTL_MIN);
 
 			if (!$ok) {

@@ -361,22 +361,31 @@ $(document).on("click", "#btnReenviarOtp", function(e){
 // ===== Manejo de errores AJAX =====
 
 function mostrarErrorAjax(xhr, fallback) {
+  let obj = null;
+
   // 1) Si jQuery ya parseó JSON
   if (xhr && xhr.responseJSON) {
-    const m = xhr.responseJSON.message || xhr.responseJSON.msg;
-    if (m) return ui_LoginAlert('error', m);
+    obj = xhr.responseJSON;
+  } else {
+    // 2) Intentar parsear el texto como JSON
+    try { obj = JSON.parse(xhr.responseText || "{}"); } catch (e) {}
   }
 
-  // 2) Intentar parsear el texto como JSON
-  try {
-    const obj = JSON.parse(xhr.responseText || "{}");
-    const m = obj.message || obj.msg;
-    if (m) return ui_LoginAlert('error', m);
-  } catch (e) {}
+  // Si viene waitSec del backend, sincroniza cooldown
+  if (obj && obj.waitSec != null && !isNaN(obj.waitSec) && typeof iniciarCooldownOtp === "function") {
+    iniciarCooldownOtp(parseInt(obj.waitSec, 10));
+  }
 
-  // 3) Fallback
-  ui_LoginAlert('error', fallback || "Error de comunicación. Intenta nuevamente.");
+  // Mensaje real del backend
+  if (obj) {
+    const m = obj.message || obj.msg;
+    if (m) { ui_LoginAlert('err', m); return; }
+  }
+
+  // Fallback
+  ui_LoginAlert('err', fallback || "Error de comunicación. Intenta nuevamente.");
 }
+
 
 
 // Inicializa automáticamente si el HTML tiene los campos del login

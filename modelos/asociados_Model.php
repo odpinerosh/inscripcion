@@ -109,6 +109,68 @@ date_default_timezone_set("America/Bogota");
 			return (bool)mysqli_query($this->conecta, $sql);
 		}
 
+		// Valida si aplica cooldown para nuevo OTP
+		public function validarCooldownOtp($asoId, $evenId, $cooldownSec = 60){
+			$asoId = mysqli_real_escape_string($this->conecta, (string)$asoId);
+			$evenId = mysqli_real_escape_string($this->conecta, (string)$evenId);
+			$cooldownSec = (int)$cooldownSec;
+
+			// Busca el OTP más reciente que aún sea "relevante"
+			$sql = "
+			SELECT created_at, expires_at, used_at
+			FROM acceso_otp
+			WHERE aso_Id = '$asoId'
+				AND even_Id  = '$evenId'
+			ORDER BY created_at DESC
+			LIMIT 1
+			";
+
+			$rs = mysqli_query($this->conecta, $sql);
+			if (!$rs || mysqli_num_rows($rs) === 0) {
+				return ["ok" => true, "wait" => 0];
+			}
+
+			$row = mysqli_fetch_assoc($rs);
+
+			// Si ya fue usado, no aplica cooldown
+			if (!empty($row['used_at'])) {
+				return ["ok" => true, "wait" => 0];
+			}
+
+			// Si ya expiró, no aplica cooldown
+			if (!empty($row['expires_at']) && strtotime($row['expires_at']) <= time()) {
+				return ["ok" => true, "wait" => 0];
+			}
+
+			// Cooldown por tiempo desde created_at
+			$created = !empty($row['created_at']) ? strtotime($row['created_at']) : 0;
+			if ($created > 0) {
+				$diff = time() - $created;
+				if ($diff < $cooldownSec) {
+					return ["ok" => false, "wait" => ($cooldownSec - $diff)];
+				}
+			}
+
+			return ["ok" => true, "wait" => 0];
+		}
+
+		// Invalida OTPs previos (marcar como usados)
+		public function invalidarOtpsPrevios($asoId, $evenId){
+			$asoId = mysqli_real_escape_string($this->conecta, (string)$asoId);
+			$evenId = mysqli_real_escape_string($this->conecta, (string)$evenId);
+
+			$sql = "
+			UPDATE acceso_otp
+			SET used_at = NOW()
+			WHERE aso_Id = '$asoId'
+				AND even_Id   = '$evenId'
+				AND used_at IS NULL
+				AND expires_at > NOW()
+			";
+			return mysqli_query($this->conecta, $sql);
+		}
+
+		// Enviar correo con OTP
 		public function mail_Otp($correo, $otp, $ttlMin){
 			// PHPMailer local
 			require_once __DIR__ . '/../clases/PHPMailer/PHPMailerAutoload.php';
