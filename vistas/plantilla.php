@@ -81,7 +81,7 @@
                 <h3>INSCRIPCION DE DELEGADOS<br>2026</h3>
             </div>
             <div style="position:fixed;bottom:10px;right:10px;z-index:99999;background:#000;color:#fff;padding:6px 10px;font-size:12px;border-radius:6px;opacity:.75;">
-                plantilla.php :: OTP_TEST :: <?php echo date('Y-m-d H:i:s'); ?>
+                CNX'N_TEST :: <?php echo date('Y-m-d H:i:s'); ?>
             </div>
             <input type='text' name='evento' class='form-control' id='evento' value='1' style="display: none" readonly></input> 
             <div class="container-fluid dashboard-content" style="max-width: 400px;background-color: #e2f2e4"> 
@@ -127,7 +127,7 @@
 
                     <div id='div_LoginAlert' class='form-group' style='margin-top:8px;'></div>
 
-                    <!-- Botón opcional (deja Enter como flujo principal). Puedes ocultarlo si quieres. -->
+                    <!-- Botón opcional (deja Enter como flujo principal).  -->
                     <div id='div_Validar' class='form-group' style='text-align: center'>
                         <!--input class='btn btn-success' type='button' name='validar' id='validar' value='Continuar' class='form-control' style='font-size: large; font-weight:bold' onclick="validar_Documento()"-->
                         <button id="btnContinuarOtp" type="button" class="btn btn-primary">Continuar</button>
@@ -168,8 +168,8 @@
     <script src="assets/vendor/jquery/jquery-3.3.1.min.js"></script>
     <script src="assets/vendor/bootstrap/js/bootstrap.bundle.js"></script>
     <script src="assets/vendor/slimscroll/jquery.slimscroll.js"></script>
-    <!--script src="assets/libs/js/main-js.js"></script-->
-    <!--script src="assets/vendor/timeline/js/main.js"></script-->
+    <script src="assets/libs/js/main-js.js"></script>
+    <script src="assets/vendor/timeline/js/main.js"></script>
     <script src="js/auditoria.js?v=20260125_1"></script>
 </body>
 

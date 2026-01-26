@@ -109,6 +109,101 @@ date_default_timezone_set("America/Bogota");
 			return (bool)mysqli_query($this->conecta, $sql);
 		}
 
+		public function mail_Otp($correo, $otp, $ttlMin){
+			// PHPMailer local
+			require_once __DIR__ . '/../clases/PHPMailer/PHPMailerAutoload.php';
+			// Config SMTP
+			require_once __DIR__ . '/../config/mail.php';
+			// Logo en el correo
+			$logoPath = __DIR__ . '/../images/logo.jpg';  
+			$logoCid  = 'logo_cooptraiss';
+			// Contenido
+			$asunto = 'Código de acceso al evento';
+			$fecha  = date("Y-m-d H:i:s");
+
+			$mensaje = "
+				<div style='font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; line-height: 1.4;'>
+					<div style='padding:18px; border:1px solid #e5e5e5; border-radius:12px;'>
+						<div style='text-align:center; margin-bottom:20px;'>
+							<img src='cid:{$logoCid}' alt='COOPTRAISS' style='max-width:200px;'>
+						</div>
+					
+					<p style='margin:0 0 14px; font-size:14px; color:#333;'>
+						A continuación encuentras tu <b>código de acceso</b>:
+					</p>
+
+					<div style='font-size:30px; letter-spacing:6px; font-weight:700; padding:14px 16px;
+								border:1px dashed #08a750; border-radius:12px; display:inline-block; color:#111;'>
+						{$otp}
+					</div>
+
+					<p style='margin:14px 0 0; font-size:14px; color:#333;'>
+						<b>Vigencia:</b> {$ttlMin} minutos.
+					</p>
+
+					<p style='margin:14px 0 0; font-size:12px; color:#666;'>
+						Fecha/hora: {$fecha}<br>
+						Si no solicitaste este código, puedes ignorar este mensaje.
+					</p>
+					</div>
+
+					<p style='margin:12px 0 0; font-size:11px; color:#777; font-style:italic;'>
+						Por favor no respondas este mensaje; se envía desde una cuenta de notificaciones automáticas.
+					</p>
+				</div>
+			";
+
+			$mail = new PHPMailer(true);
+
+			// (Opcional) Debug: SOLO para pruebas controladas
+			if (defined('MAIL_DEBUG') && MAIL_DEBUG === true) {
+				$mail->SMTPDebug = 2; // muestra detalle SMTP
+				$mail->Debugoutput = 'error_log';
+			}
+
+			$mail->isSMTP();
+			$mail->Host       = MAIL_SMTP_HOST;
+			$mail->Port       = MAIL_SMTP_PORT;
+			$mail->SMTPAuth   = (bool)MAIL_SMTP_AUTH;
+			$mail->SMTPSecure = MAIL_SMTP_SECURE;
+
+			$mail->Username   = MAIL_SMTP_USER;
+			$mail->Password   = MAIL_SMTP_PASS;
+
+			
+			$fromEmail = MAIL_FROM_EMAIL ?: MAIL_SMTP_USER;
+			$fromName  = MAIL_FROM_NAME  ?: 'COOPTRAISS';
+
+			$mail->setFrom($fromEmail, $fromName);
+			$mail->addAddress($correo);
+
+			if (defined('MAIL_BCC') && MAIL_BCC !== '') {
+				$mail->addBCC(MAIL_BCC);
+			}
+
+			$mail->Subject = utf8_decode($asunto);
+			if (file_exists($logoPath)) {
+			    $mail->addEmbeddedImage($logoPath, $logoCid, 'logo.jpg');
+			}
+
+			$mail->Body    = utf8_decode($mensaje);
+			$mail->AltBody = "Tu código de acceso es: {$otp}. Vigencia: {$ttlMin} minutos.";
+			$mail->isHTML(true);
+
+			// Importante para caracteres
+			$mail->CharSet = 'UTF-8';
+
+			try {
+				return $mail->send();
+			} catch (Exception $e) {
+				// Log mínimo 
+				error_log("PHPMailer OTP error: " . $mail->ErrorInfo);
+				return false;
+			}
+		}
+
+
+
 		public function verificar_OTP($asoId, $evenId, $otpPlain){
 			$asoId = mysqli_real_escape_string($this->conecta, $asoId);
 			$evenId = mysqli_real_escape_string($this->conecta, $evenId);

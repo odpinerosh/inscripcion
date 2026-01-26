@@ -253,13 +253,13 @@ function solicitar_Codigo_Otp(){
     if (!validar_Correo(correo)) { ui_LoginAlert('err', 'Ingresa un correo válido.'); return; }
 
     $('#div_CodigoLogin').hide();
-    ui_LoginAlert('ok', 'Validando correo y enviando código...');
+    ui_LoginAlert('info', 'Validando correo y enviando código...');
 
     $.ajax({
     type: "POST",
     url: "controladores/asociados_Controller.php?accion=9",
     dataType: "json",
-    data: { id_Asociado: doc, id_Evento: ev, correo: correo },
+    data: { id_Asociado: doc, id_Evento: evento, correo: correo },
     success: function(resp){
         if(resp.ok){
         // ... tu flujo actual OK

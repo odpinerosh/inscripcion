@@ -195,9 +195,21 @@
 			}
 
 			// Envío de correo (simple). 
-			$asunto = "Código de acceso al evento";
-			$msg    = "Tu código de acceso es: $otp\n\nVence en $OTP_TTL_MIN minutos.";
-			@mail($correoBD, $asunto, $msg);
+			//$asunto = "Código de acceso al evento";
+			//$msg    = "Tu código de acceso es: $otp\n\nVence en $OTP_TTL_MIN minutos.";
+			//@mail($correoBD, $asunto, $msg);
+
+
+			$sent = $asociados->mail_Otp($correoBD, $otp, $OTP_TTL_MIN);
+
+			if (!$sent) {
+				http_response_code(500);
+				echo json_encode([
+				"ok"=>false,
+				"msg"=>"Se generó el código, pero no fue posible enviar el correo. Intenta reenviar."
+				]);
+				exit;
+			}
 
 			echo json_encode([
 			"ok" => true,
