@@ -186,7 +186,7 @@ date_default_timezone_set("America/Bogota");
 			$logoPath = __DIR__ . '/../images/logo.jpg';  
 			$logoCid  = 'logo_cooptraiss';
 			// Contenido
-			$asunto = 'Código de acceso al evento';
+			$asunto = 'Código de acceso - Inscripción de Delegados COOPTRAISS';
 			$fecha  = date("Y-m-d H:i:s");
 
 			$mensaje = "

@@ -30,10 +30,10 @@ function enviar_Documento(){
         url:  urldat,
         data: dataString,
         success: function(data) {
-            $('#div_Agencias').show();
             $('#div_Datos').empty();
             $('#div_Alertas').empty();
             $('#div_Datos').html(data);
+            toggleBtnInscribir();
         }
     }); 
 
@@ -50,77 +50,70 @@ function validar_Acceso(){
 }
 
 function validar_Formulario(){
-    var nombre = $('#nombre').val();
-    var correo = $('#correo').val();
-    var correo_Confirma = $('#correo_Confirma').val();
-    var identificacion = $('#identificacion').val();
-    var agencia = $('#agencias').val();
-    var celular = $('#celular').val();
-    var val_Correo = validar_Correo(correo);
-    var val_Celular = validar_Celular(celular);
+  var nombre = ($('#nombre').val() || '').trim();
+  var correo = ($('#correo').val() || '').trim();
+  var identificacion = ($('#identificacion').val() || '').trim();
 
-    var errores = [];
+  var esDelegado = ($('#es_delegado').val() || '0') === '1';
+  var antiguedad = parseFloat($('#antiguedad').val() || '0');
 
+  var errores = [];
 
-    if (nombre =='') {
-        errores.push("El campo nombre está vacío");
+  if (!esDelegado){
+    if (antiguedad < 5) errores.push("No cumples la antigüedad mínima de 5 años.");
+
+    if (!$('#chk_curso80').is(':checked')) errores.push("Debes certificar el curso de 80 horas.");
+    if (!$('#chk_no_directivo').is(':checked')) errores.push("Debes certificar lo de cargos directivos (últimos 3 años).");
+
+    var f = $('#soporte_pdf').get(0);
+    if (!(f && f.files && f.files.length === 1)) {
+      errores.push("Debes adjuntar el PDF único (certificado + cédula).");
     }
-    if (identificacion =='') {
-        errores.push("El campo identificación está vacío");
-    }
-    if (agencia =='0') {
-        errores.push(" Seleccione una agencia");
-    }
-    if (!val_Correo) {
-        errores.push(" Ingrese un correo válido");
-    }
-    if (correo_Confirma!=correo) {
-        errores.push("La confirmación de correo no coincide");
-    }
-    /*
-    if (!val_Celular) {
-        errores.push(" El celular debe tener 10 números.");
-    }
-    */
-    
-    
-    if (errores.length>0) {
-        $('#errores').empty();
-        $('#errores').show();
-        $('#errores').html('<h5>Debes corregir:</h5>'+errores);
-    }else{
-        $('#errores').empty();
-        $('#errores').hide();
-        realizar_Inscripcion();
-    }
-    
+  }
+
+  if (errores.length > 0) {
+    $('#errores').empty().show().html('<h5>Debes corregir:</h5>' + errores.join('<br>'));
+    return;
+  }
+
+  $('#errores').empty().hide();
+  realizar_Inscripcion();
 }
+
 
 function realizar_Inscripcion(){
-    
-    var evento = $('#evento').val()
-    $('#div_Loading').show(1000);
-    $('html, body').animate({
-        scrollTop: $("#div_Loading").offset().top
-    }, 1000);
-    $('#div_Validar').hide();
-    $('#div_Enviar').hide();
-    var urldat="controladores/eventos_Controller.php?accion=1&id_Evento="+evento;
-    var page = $(this).attr('data');        
-    var dataString = 'page='+page;
+  var evento = $('#evento').val();
 
-    $.ajax({
-        type: "POST",
-        url:  urldat,
-        data: $("#inscripcion").serialize(),
-        success: function(data) {
-            $('#div_Loading').hide();
-            $('#div_Validar').show();
-            $('#div_Enviar').show();
-            $('#div_Alertas').html(data);
-        }
-    }); 
+  $('#div_Loading').show(1000);
+  $('html, body').animate({ scrollTop: $("#div_Loading").offset().top }, 1000);
+  $('#div_Validar').hide();
+  $('#div_Enviar').hide();
+
+  var urldat = "controladores/eventos_Controller.php?accion=1&id_Evento=" + encodeURIComponent(evento);
+
+  var fd = new FormData(document.getElementById('inscripcion'));
+
+  $.ajax({
+    type: "POST",
+    url: urldat,
+    data: fd,
+    processData: false,
+    contentType: false,
+    success: function(data){
+      $('#div_Loading').hide();
+      $('#div_Validar').show();
+      $('#div_Enviar').show();
+      $('#div_Alertas').html(data);
+    },
+    error: function(xhr){
+      $('#div_Loading').hide();
+      $('#div_Validar').show();
+      $('#div_Enviar').show();
+      mostrarErrorAjax(xhr, "Error procesando la inscripción. Intenta nuevamente.");
+    }
+  });
 }
+
 
 
 function numeros(e){
@@ -321,8 +314,12 @@ function verificar_Codigo_Otp(){
       enviar_Documento();
     },
     error: function(xhr){
-      mostrarErrorAjax(xhr, "Error validando el código. Intenta nuevamente.");
+      if (!(xhr && xhr.status === 429)) {
+        $('#btnEnviarOtp').prop('disabled', false);
+      }
+      mostrarErrorAjax(xhr, "Error enviando el código. Intenta nuevamente.");
     }
+
   });
 }
 
@@ -361,28 +358,48 @@ $(document).on("click", "#btnReenviarOtp", function(e){
 // ===== Manejo de errores AJAX =====
 
 function mostrarErrorAjax(xhr, fallback) {
-  let obj = null;
+  // 0) Cooldown OTP (429)
+  if (xhr && xhr.status === 429) {
+    let wait = null;
+    let m = null;
+
+    if (xhr.responseJSON) {
+      m = xhr.responseJSON.message || xhr.responseJSON.msg;
+      wait = xhr.responseJSON.wait;
+    } else {
+      try {
+        const obj = JSON.parse(xhr.responseText || "{}");
+        m = obj.message || obj.msg;
+        wait = obj.wait;
+      } catch (e) {}
+    }
+
+    if (m) ui_LoginAlert('err', m);
+    else ui_LoginAlert('err', "Espera unos segundos para reenviar el código.");
+
+    // si el backend manda "wait", úsalo; si no, asume 60
+    if (typeof iniciarCooldownOtp === 'function') {
+      const sec = (wait != null) ? parseInt(wait, 10) : 60;
+      if (!isNaN(sec) && sec > 0) iniciarCooldownOtp(sec);
+    }
+
+    return;
+  }
 
   // 1) Si jQuery ya parseó JSON
   if (xhr && xhr.responseJSON) {
-    obj = xhr.responseJSON;
-  } else {
-    // 2) Intentar parsear el texto como JSON
-    try { obj = JSON.parse(xhr.responseText || "{}"); } catch (e) {}
+    const m = xhr.responseJSON.message || xhr.responseJSON.msg;
+    if (m) return ui_LoginAlert('err', m);
   }
 
-  // Si viene waitSec del backend, sincroniza cooldown
-  if (obj && obj.waitSec != null && !isNaN(obj.waitSec) && typeof iniciarCooldownOtp === "function") {
-    iniciarCooldownOtp(parseInt(obj.waitSec, 10));
-  }
-
-  // Mensaje real del backend
-  if (obj) {
+  // 2) Intentar parsear el texto como JSON
+  try {
+    const obj = JSON.parse(xhr.responseText || "{}");
     const m = obj.message || obj.msg;
-    if (m) { ui_LoginAlert('err', m); return; }
-  }
+    if (m) return ui_LoginAlert('err', m);
+  } catch (e) {}
 
-  // Fallback
+  // 3) Fallback
   ui_LoginAlert('err', fallback || "Error de comunicación. Intenta nuevamente.");
 }
 
@@ -434,3 +451,28 @@ $(document).on("click", "#btnValidarOtp", function(e){
   verificar_Codigo_Otp();   
 });
 
+function reiniciar_Inscripcion(){
+  window.location.reload();
+}
+
+function toggleBtnInscribir(){
+  var esDelegado = ($('#es_delegado').val() || '0') === '1';
+
+  if (esDelegado){
+    $('#enviar').prop('disabled', false);
+    return;
+  }
+
+  var okCurso = $('#chk_curso80').is(':checked');
+  var okNoDir = $('#chk_no_directivo').is(':checked');
+
+  var f = $('#soporte_pdf').get(0);
+  var okFile = (f && f.files && f.files.length === 1);
+
+  $('#enviar').prop('disabled', !(okCurso && okNoDir && okFile));
+}
+
+// Re-evaluar cada vez que cambie un requisito
+$(document).on('change', '#chk_curso80, #chk_no_directivo, #soporte_pdf', function(){
+  toggleBtnInscribir();
+});

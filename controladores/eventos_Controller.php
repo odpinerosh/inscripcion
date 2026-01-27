@@ -11,52 +11,184 @@
 
 	switch ($accion) {
 
-		case '1'://Realizar inscripción
-			$id_Evento = $_GET['id_Evento'];
-			$id_Asociado  = strip_tags($_POST['identificacion']);
-			$correo = strip_tags($_POST['correo']);
-			$celular = strip_tags($_POST['celular']);
-			$nombre = strip_tags($_POST['nombre']);
-			$participante = strip_tags($_POST['participante']);
+		case '1': // Confirmar inscripción (HTML)
+			session_start();
 
-			$fecha = date("Y-m-d H:i:s");
-			/*
-			$prueba = array($id_Asociado, $id_Agencia, $correo,	$celular, $fecha, $id_Evento);
-			echo "<pre>";
-				var_dump($prueba);
-			echo "<pre>";
-			*/
-			
+			$id_Evento = $_GET['id_Evento'] ?? ''; // se conserva por compatibilidad
+			$id_Asociado = $_POST['identificacion'] ?? '';
+			$correo = $_POST['correo'] ?? '';
+			$celular = $_POST['celular'] ?? '';
+
+			$esDelegado = (int)($_POST['es_delegado'] ?? 0);
+			$antiguedad = (float)($_POST['antiguedad'] ?? 0);
+
+			// Guard de sesión OTP (mismo criterio del asociados_Controller)
+			$msgSess = '';
+			$okSess = false;
+
+			if (!isset($_SESSION['otp_ok'], $_SESSION['otp_aso'], $_SESSION['otp_even'], $_SESSION['otp_expires'])) {
+				$msgSess = "Debes validar tu acceso con el código enviado a tu correo antes de continuar.";
+			} elseif (time() > (int)$_SESSION['otp_expires']) {
+				$_SESSION = [];
+				session_destroy();
+				$msgSess = "Tu sesión venció. Solicita un nuevo código e inténtalo de nuevo.";
+			} elseif ((string)$_SESSION['otp_aso'] !== (string)$id_Asociado || (string)$_SESSION['otp_even'] !== (string)$id_Evento) {
+				$msgSess = "Sesión inválida para este documento/evento.";
+			} else {
+				$okSess = true;
+			}
+
+			if (!$okSess) {
+				echo "<div class='alert alert-danger' role='alert'>".$msgSess."</div>";
+				exit;
+			}
+
+			if (trim($id_Asociado) === '' || trim($correo) === '') {
+				echo "<div class='alert alert-danger' role='alert'>Parámetros incompletos.</div>";
+				exit;
+			}
+
 			$eventos = new Eventos();
-			$validar_Inscripcion = $eventos->validar_Inscripcion($id_Asociado, $id_Evento);
-			if (!$validar_Inscripcion ) {
 
-				$realizar_Inscripcion = $eventos->realizar_Inscripcion($participante, $fecha, $correo, $celular);
-				//Llamada a la vista
-				if ($realizar_Inscripcion) {
-					//generar envío de correos
-					$eventos->mail_Inscripcion($nombre, $id_Asociado, $correo, $celular);
-					//mostrar mensaje de confirmación en pantalla
-					echo"
-						<div class='alert alert-primary' role='alert'>
-		                    Su inscripción ha sido exitosa. En el transcurso del día recibirá un correo electrónico en cual se le indicará cómo ingresar al evento.
-		                </div>";
-				}else{
-					echo"
-					<div class='alert alert-warning' role='alert'>
-	                    No fué posible realizar la inscripción, por favor intente nuevamente.
-	                </div>";
+			// Ya inscrito
+			$existe = $eventos->validar_Inscripcion($id_Asociado, $id_Evento);
+			if ($existe) {
+				$f = $existe['ins_Fecha'] ?? '';
+				echo "<div class='alert alert-primary' role='alert'>
+						El documento ".$id_Asociado." ya se encuentra inscrito. Registrado en ".$f."
+					</div>
+					<script>setTimeout(function(){ window.location.reload(); }, 2000);</script>";
+				exit;
+			}
+
+			// Reglas
+			$rutaAdj = null;
+
+			if ($esDelegado !== 1) {
+				if ($antiguedad < 5.0) {
+				echo "<div class='alert alert-danger' role='alert'>
+						No cumples la antigüedad mínima de 5 años para inscribirte.
+						</div>
+						<script>setTimeout(function(){ window.location.reload(); }, 2500);</script>";
+				exit;
 				}
 
-			}else{
-				//mensaje informando que ya está inscrito
-				$inscripcion = $validar_Inscripcion ['ins_Fecha'];
-				echo"
-				<div class='alert alert-primary' role='alert'>
-                    El documento ".$id_Asociado." ya se encuentra inscrito al evento. Registrado en ".$inscripcion."
-                </div>";
+				$chkCurso = isset($_POST['chk_curso80']) && $_POST['chk_curso80'] == '1';
+				$chkNoDir = isset($_POST['chk_no_directivo']) && $_POST['chk_no_directivo'] == '1';
+
+				if (!$chkCurso || !$chkNoDir) {
+				echo "<div class='alert alert-danger' role='alert'>
+						Debes marcar las certificaciones requeridas.
+						</div>";
+				exit;
+				}
+
+				// Archivo PDF único obligatorio
+				if (!isset($_FILES['soporte_pdf']) || $_FILES['soporte_pdf']['error'] !== UPLOAD_ERR_OK) {
+				echo "<div class='alert alert-danger' role='alert'>
+						Debes adjuntar el archivo PDF único (certificado + cédula).
+						</div>";
+				exit;
+				}
+
+				error_log("UPLOAD soporte_pdf: name=".$_FILES['soporte_pdf']['name'].
+					" size=".$_FILES['soporte_pdf']['size'].
+					" tmp=".$_FILES['soporte_pdf']['tmp_name'].
+					" err=".$_FILES['soporte_pdf']['error'].
+					" type=".$_FILES['soporte_pdf']['type']);
+
+				// Validar PDF básico
+				// Extensión .pdf
+				// Cabecera %PDF
+				$tmp  = $_FILES['soporte_pdf']['tmp_name'];
+				$name = $_FILES['soporte_pdf']['name'] ?? '';
+				$ext  = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+				$size = (int)($_FILES['soporte_pdf']['size'] ?? 0);
+
+				if ($ext !== 'pdf') {
+				echo "<div class='alert alert-danger' role='alert'>El archivo debe tener extensión .pdf.</div>";
+				exit;
+				}
+
+				if ($size <= 0) {
+				echo "<div class='alert alert-danger' role='alert'>No fue posible leer el archivo subido (tamaño 0).</div>";
+				exit;
+				}
+
+				$fh = @fopen($tmp, 'rb');
+				if (!$fh) {
+				echo "<div class='alert alert-danger' role='alert'>No fue posible leer el archivo subido.</div>";
+				exit;
+				}
+
+				$head = fread($fh, 4096);
+				fclose($fh);
+
+				error_log("UPLOAD head_hex=".bin2hex(substr($head, 0, 32)));
+
+				if ($head === '' || strpos($head, '%PDF') === false) {
+				echo "<div class='alert alert-danger' role='alert'>El archivo no parece ser un PDF válido.</div>";
+				exit;
+				}
+
+
+				// Tamaño máximo 10MB
+				$maxBytes = 10 * 1024 * 1024; // 10MB
+				if ((int)$_FILES['soporte_pdf']['size'] > $maxBytes) {
+				echo "<div class='alert alert-danger' role='alert'>El archivo supera el tamaño permitido (10MB).</div>";
+				exit;
+				}
+
+
+				// Guardar archivo
+				$baseDir = __DIR__ . '/../soportes/inscripciones/' . preg_replace('/[^0-9A-Za-z_-]/', '', (string)$id_Asociado) . '/';
+				if (!is_dir($baseDir)) {
+					if (!mkdir($baseDir, 0755, true)) {
+						echo "<div class='alert alert-danger' role='alert'>No fue posible crear la carpeta de soportes.</div>";
+						exit;
+					}
+				}
+
+				$fileName = 'soporte_' . date('Ymd_His') . '.pdf';
+				$destAbs = $baseDir . $fileName;
+
+				if (!move_uploaded_file($tmp, $destAbs)) {
+				echo "<div class='alert alert-danger' role='alert'>No fue posible guardar el archivo.</div>";
+				exit;
+				}
+
+				// Ruta relativa para BD
+				$rutaAdj = 'soportes/inscripciones/' . preg_replace('/[^0-9A-Za-z_-]/', '', (string)$id_Asociado) . '/' . $fileName;
 			}
-		break;
+
+			// Insertar inscripción
+			$fecha = date('Y-m-d H:i:s');
+
+			$ok = $eventos->crear_Inscripcion($id_Asociado, $fecha, $correo, $celular, $rutaAdj);
+			if (!$ok) {
+				echo "<div class='alert alert-danger' role='alert'>No fue posible registrar la inscripción.</div>";
+				exit;
+			}
+
+			// Correo confirmación
+			$sent = $eventos->mail_ConfirmacionInscripcion($correo, $id_Asociado, $fecha);
+			if (!$sent) {
+				echo "<div class='alert alert-warning' role='alert'>
+						Inscripción registrada, pero no fue posible enviar el correo de confirmación.
+					</div>
+					<script>setTimeout(function(){ window.location.reload(); }, 2500);</script>";
+				exit;
+			}
+
+			// Cerrar sesión OTP después de inscribir
+			$_SESSION = [];
+			session_destroy();
+
+			echo "<div class='alert alert-success' role='alert'>
+					Inscripción confirmada. En breve se reiniciará el formulario.
+					</div>
+					<script>setTimeout(function(){ window.location.reload(); }, 2000);</script>";
+		exit;
 
 		case '3'://Generar Reporte
 			$usuario = $_GET['usuario'];

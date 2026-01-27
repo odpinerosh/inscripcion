@@ -53,62 +53,122 @@
 				$eventos = new Eventos();
 				$validar_Inscripcion = $eventos->validar_Inscripcion($id_Asociado, $id_Evento);
 				if (!$validar_Inscripcion ) {
+					$esDelegado = (int)($consultar_Asociado['aso_Delegado'] ?? 0);
+					$antiguedad = (float)($consultar_Asociado['aso_Antiguedad'] ?? 0);
 
 					//mostrar formulario para inscripción
-					echo "
-						<div id='div_Nombre' class='form-group'>
-	                        <h5>Nombre</h5>
-	                        <span class='input-group-prepend'>
-	                            <input type='text' name='nombre' id='nombre'  class='form-control' readonly value='".$consultar_Asociado['aso_Nombre']."'></input>
-	                            <span class='input-group-text' style ='background-color:#08a750;color:#fff101'><i class='fas fa-user'></i></span>
-	                        </span>
-	                    </div>
-	                    <div id='div_identificacion' class='form-group'>
-	                        <h5>identificación</h5>
-	                        <span class='input-group-prepend'>
-	                            <input type='text' name='identificacion' class='form-control' placeholder='Ingrese el número' value='".$id_Asociado."' id='identificacion' readonly></input>
-	                            <span class='input-group-text' style ='background-color:#08a750;color:#fff101'><i class='fas fa-id-card'></i></span>
-	                        </span>
-	                    </div>
-	                    <div id='div_Correo' class='form-group'>
-	                        <h5>Correo electrónico</h5>
-	                        <span class='input-group-prepend'>
-	                            <input type='text' name='correo' id='correo' class='form-control' placeholder='Ingrese el correo' value='".$consultar_Asociado['aso_Correo']."'></input>
-	                            <span class='input-group-text' style ='background-color:#08a750;color:#fff101'><i class='fas fa-at'></i></span>
-	                        </span>
-	                    </div>
-	                    <div id='div_Correo_Confirma' class='form-group'>
-	                        <h5>Confirmar Correo</h5>
-	                        <span class='input-group-prepend'>
-	                            <input type='text' name='correo_Confirma' id='correo_Confirma' class='form-control' placeholder='Confirme el correo'></input>
-	                            <span class='input-group-text' style ='background-color:#08a750;color:#fff101'><i class='fas fa-at'></i></span>
-	                        </span>
-	                    </div>
-	                    <div id='div_Celular' class='form-group' style='display: none'>
-	                        <h5>Número de celular</h5>
-	                        <span class='input-group-prepend'>
-	                            <input type='text' name='celular' id='celular' class='form-control' placeholder='Ingrese el número' onKeyDown='numeros(event)' maxlength='10' value='".$consultar_Asociado['aso_Celular']."' readonly></input>
-	                            <span class='input-group-text' style ='background-color:#08a750;color:#fff101'><i class='fas fa-phone'></i></span>
-	                        </span>
-	                    </div><br>
-	                    <div id='div_Participante' class='form-group' style='display: none'>
-	                        <h5>Participante Id</h5>
-	                        <span class='input-group-prepend'>
-	                            <input type='text' name='participante' id='participante' class='form-control' placeholder='Ingrese el número' onKeyDown='numeros(event)' maxlength='10' value='".$consultar_Asociado['part_Id']."' readonly></input>
-	                            <span class='input-group-text' style ='background-color:#08a750;color:#fff101'><i class='fas fa-phone'></i></span>
-	                        </span>
-	                    </div>
-	                    <div class='alert alert-danger' role='alert' id='errores' style='display:none'>
-		                    <h5>Debes corregir:</h5>
-		                </div>
-	                    <div id='div_Enviar' class='form-group' style='text-align: center'>
-	                        <input class='btn btn-success' type='button' name='enviar' id='enviar' value='Confirmar inscripción' class='form-control' style='font-size: large; font-weight:bold' onclick='validar_Formulario()'>
-	                    </div>
-	                    <div id='div_Loading' class='form-group' style='text-align: center; display:none'>
-	                    	<label>Se está procesando la solicitud, por favor espere.</label>
-	                        <img src='images/loading.gif' style='max-width: 240px;'>
-	                    </div>
+					$html = "
+					<input type='hidden' id='es_delegado' name='es_delegado' value='".$esDelegado."'>
+					<input type='hidden' id='antiguedad' name='antiguedad' value='".$antiguedad."'>
+
+					<div id='div_Nombre' class='form-group'>
+						<h5>Nombre</h5>
+						<span class='input-group-prepend'>
+						<input type='text' name='nombre' id='nombre' class='form-control' readonly value='".$consultar_Asociado['aso_Nombre']."'>
+						<span class='input-group-text' style='background-color:#08a750;color:#fff101'><i class='fas fa-user'></i></span>
+						</span>
+					</div>
+
+					<div id='div_identificacion' class='form-group'>
+						<h5>Identificación</h5>
+						<span class='input-group-prepend'>
+						<input type='text' name='identificacion' class='form-control' value='".$id_Asociado."' id='identificacion' readonly>
+						<span class='input-group-text' style='background-color:#08a750;color:#fff101'><i class='fas fa-id-card'></i></span>
+						</span>
+					</div>
+
+					<div id='div_Correo' class='form-group'>
+						<h5>Correo electrónico (verificado)</h5>
+						<span class='input-group-prepend'>
+						<input type='text' name='correo' id='correo' class='form-control' value='".$consultar_Asociado['aso_Correo']."' readonly>
+						<span class='input-group-text' style='background-color:#08a750;color:#fff101'><i class='fas fa-at'></i></span>
+						</span>
+					</div>
+
+					<div id='div_Celular' class='form-group' style='display:none'>
+						<h5>Número de celular</h5>
+						<span class='input-group-prepend'>
+						<input type='text' name='celular' id='celular' class='form-control' maxlength='10'
+								value='".$consultar_Asociado['aso_Celular']."' readonly>
+						<span class='input-group-text' style='background-color:#08a750;color:#fff101'><i class='fas fa-phone'></i></span>
+						</span>
+					</div>
+					<br>
 					";
+
+					if ($esDelegado === 1) {
+						$html .= "
+							<div class='alert alert-info' role='alert'>
+							Ya eres delegado actualmente. Puedes confirmar tu inscripción.
+							</div>
+						";
+					} else {
+						if ($antiguedad < 5.0) {
+							$antiguedadTxt = number_format($antiguedad, 1, '.', '');
+							$html .= "
+							<div class='alert alert-danger' role='alert'>
+								No cumples la antigüedad mínima de 5 años para inscribirte como delegado. (Antigüedad actual: ".$antiguedadTxt." años)
+							</div>
+							<div class='form-group' style='text-align:center'>
+								<button type='button' class='btn btn-secondary' onclick='reiniciar_Inscripcion()'>Salir</button>
+							</div>
+							";
+							echo $html;
+							exit;
+					}
+
+					$html .= "
+						<hr>
+						<div class='alert alert-warning' role='alert'>
+						Debes adjuntar <b>UN SOLO archivo PDF</b> que incluya: <b>certificado del curso (80 horas)</b> y <b>copia de la cédula</b>.
+						</div>
+
+						<div class='form-group'>
+						<div class='custom-control custom-checkbox'>
+							<input type='checkbox' class='custom-control-input' id='chk_curso80' name='chk_curso80' value='1'>
+							<label class='custom-control-label' for='chk_curso80'>Certifico que realicé el curso de 80 horas.</label>
+						</div>
+						</div>
+
+						<div class='form-group'>
+						<div class='custom-control custom-checkbox'>
+							<input type='checkbox' class='custom-control-input' id='chk_no_directivo' name='chk_no_directivo' value='1'>
+							<label class='custom-control-label' for='chk_no_directivo'>
+							Certifico que no he ejercido cargos de dirección en la cooperativa en los últimos tres (3) años.
+							</label>
+						</div>
+						</div>
+
+						<div class='form-group'>
+						<label><b>Soporte (PDF único)</b></label>
+						<input type='file' id='soporte_pdf' name='soporte_pdf' class='form-control' accept='application/pdf'>
+						<small class='text-muted'>Solo PDF. Adjunta certificado + cédula en el mismo archivo.</small>
+						</div>
+					";
+					}
+
+					$disabled = ($esDelegado === 1) ? "" : "disabled";
+
+					$html .= "
+					<div class='alert alert-danger' role='alert' id='errores' style='display:none'>
+						<h5>Debes corregir:</h5>
+					</div>
+
+					<div id='div_Enviar' class='form-group' style='text-align:center'>
+						<input class='btn btn-success' type='button' name='enviar' id='enviar'
+							value='Confirmar inscripción'
+							style='font-size: large; font-weight:bold'
+							onclick='validar_Formulario()' ".$disabled.">
+					</div>
+
+					<div id='div_Loading' class='form-group' style='text-align:center; display:none'>
+						<label>Se está procesando la solicitud, por favor espere.</label>
+						<img src='images/loading.gif' style='max-width: 240px;'>
+					</div>
+					";
+
+					echo $html;
+
 				}else{
 					//mensaje informando que ya está inscrito
 					$inscripcion = $validar_Inscripcion ['ins_Fecha'];

@@ -29,22 +29,17 @@ date_default_timezone_set("America/Bogota");
 
 		//Consultar Inscripción individual
 		public function validar_Inscripcion($id_Asociado, $id_Evento){
-			$query_bs_acces = "SELECT * FROM inscripciones_view WHERE aso_Id = '$id_Asociado' AND even_Id = '$id_Evento'";	
-			//echo $query_bs_acces;
-			
-			$bs_acces = mysqli_query( $this->conecta, $query_bs_acces);
-			if ($bs_acces) {
-				$totalRows_bs_acces = mysqli_num_rows($bs_acces);
-				if($totalRows_bs_acces >0){
-		        	$info = mysqli_fetch_array($bs_acces);
-		    	}else{
-		        	$info = false;
-		    	} 
-			}else{
-				$info = false;
-			}
-		    return $info;   
+		$id = mysqli_real_escape_string($this->conecta, (string)$id_Asociado);
+
+		$sql = "SELECT * FROM inscripcion WHERE ins_Part_Id = '$id' LIMIT 1";
+		$rs  = mysqli_query($this->conecta, $sql);
+
+		if ($rs && mysqli_num_rows($rs) > 0) {
+			return mysqli_fetch_assoc($rs);
 		}
+		return false;
+		}
+
 
 		//Crear registro de inscripción a evento
 		public function realizar_Inscripcion($id_Participante,$fecha_Incrib, $correo, $celular){
@@ -68,97 +63,84 @@ date_default_timezone_set("America/Bogota");
 			return $id;
 		}
 
-		public function mail_Inscripcion($nombre_C, $documento_C, $correo_C, $telefono_C){
-	    //EMAIL INFORMANDO AL PROFESOR SU REGISTRO EN EL SISTEMA
+		//Crear registro de inscripción a evento con adjunto
+		public function crear_Inscripcion($id_Asociado, $fecha, $correo, $celular, $rutaAdj){
+		$id  = mysqli_real_escape_string($this->conecta, (string)$id_Asociado);
+		$f   = mysqli_real_escape_string($this->conecta, (string)$fecha);
+		$co  = mysqli_real_escape_string($this->conecta, (string)$correo);
+		$ce  = mysqli_real_escape_string($this->conecta, (string)$celular);
+		$ra  = is_null($rutaAdj) ? null : mysqli_real_escape_string($this->conecta, (string)$rutaAdj);
+
+		$rutaSql = is_null($ra) ? "NULL" : "'$ra'";
+
+		$sql = "INSERT INTO inscripcion(
+					ins_Id,
+					ins_Part_Id,
+					ins_Fecha,
+					ins_Correo,
+					ins_Celular,
+					ins_Notificado,
+					ins_Ruta_Adj
+				) VALUES (
+					NULL,
+					'$id',
+					'$f',
+					'$co',
+					'$ce',
+					2,
+					$rutaSql
+				)";
+
+		$ok = mysqli_query($this->conecta, $sql);
+		return $ok ? true : false;
+		}
+
+
+		public function mail_ConfirmacionInscripcion($correo, $documento, $fecha){
 			require_once '../clases/PHPMailer/PHPMailerAutoload.php';
-			//$ruta = '../manual/manual.pdf';
-			
+
 			$remitente = 'notificaciones@solucionescooptraiss.com';
-			$empresa = 'COOPTRAISS';
-			$asunto = 'Inscripción exitosa';
-			$mensaje = '<b>Felicitaciones</b> tu inscripción al evento <b>ENCUENTRO EDUCATIVO VIRTUAL 1</b> ha sido exitosa.</br>
-			El viernes 18 de junio/2021, recibirás en el correo registrado el Link de ingreso. <b>El Link es personal</b> ya que contiene un código de registro.</br>
-			Te esperamos  el 19 de junio/2021 a las 8.00 am, contamos con tu puntual asistencia</br>
-			Recuerda descargar el material adjunto, en caso de no visualizarlo al instante, búscalo en la carpeta de Descargas.</br> 
-				<ul>
-                  <li style="font-weight: bold">
-                    <a href="https://solucionescooptraiss.com/inscripciones/material/01_AYUDAS ENCUENTRO VIRTUAL 1  COOPTRAISS.doc" target="_blank"><b>DOCUMENTO 01<b></a>
-                  </li><br>
-                  <li style="font-weight: bold">
-                    <a href="https://solucionescooptraiss.com/inscripciones/material/02_PROTOCOLO ENCUENTRO VIRTUAL 1 COOPTRAISS.docx" target="_blank"><b>DOCUMENTO 02<b></a>
-                  </li><br>
-                </ul>
-			';
-			/*
-			$mail = new PHPMailer(true);
-			$mail->isSMTP();
-			$mail->Host = 'smtp.office365.com';
-			$mail->Port = 587;
-			$mail->SMTPSecure = 'tls';
-			$mail->SMTPAuth = true;
-			$mail->Username = "soporteweb@cooptraiss.com"; 
-			$mail->Password = "coop123*";
-			*/
-			
-			
-			$mail = new PHPMailer(true);
-			$mail->isSMTP();
-			$mail->SMTPAuth = true;
-			$mail->SMTPSecure = 'tls'; //Modificar
-			$mail->Host = 'mail.solucionescooptraiss.com'; //Modificar
-			$mail->Port = 587; //Modificar
-			$mail->Username = "notificaciones@solucionescooptraiss.com"; 
-			$mail->Password = "C00p_2021*";
-			
-			
-			//$mail->addAttachment($ruta);//adjunto
-			
-			$mail->setFrom($remitente, $empresa); //Modificar
-			$mail->addAddress($correo_C);
-			
-			$mail->Subject = utf8_decode($asunto);
-			$mail->Body    = utf8_decode($mensaje);
-			$mail->IsHTML(true);
-			if($mail->send()){
-				//$this->mail_Copia_Administrador($mensaje, $nombre_C, $documento_C, $correo_C, $asunto, $telefono_C);
-				//return true;
-			}else{
-				//return false;
+			$empresa   = 'COOPTRAISS';
+			$asunto    = 'Confirmación de inscripción/Delegados Cooptraiss 2026-2030';
+
+			$mensaje = "
+				<div style='font-family: Arial, sans-serif; font-size: 14px; color:#111'>
+				<p>Apreciado(a) asociado(a),</p>
+				<p>Su inscripción ha sido registrada correctamente.</p>
+				<p>
+					<b>Documento:</b> ".htmlspecialchars((string)$documento)."<br>
+					<b>Fecha:</b> ".htmlspecialchars((string)$fecha)."
+				</p>
+				<p style='margin-top:18px'>
+					Por favor no responda este mensaje. Si requiere soporte, comuníquese al correo
+					<b>eventos@cooptraiss.com</b>.
+				</p>
+				</div>
+			";
+
+			try {
+				$mail = new PHPMailer(true);
+				$mail->isSMTP();
+				$mail->SMTPAuth   = true;
+				$mail->SMTPSecure = 'tls';
+				$mail->Host       = 'mail.solucionescooptraiss.com';
+				$mail->Port       = 587;
+				$mail->Username   = "notificaciones@solucionescooptraiss.com";
+				$mail->Password   = "C00p_2021*";
+
+				$mail->setFrom($remitente, $empresa);
+				$mail->addAddress($correo);
+
+				$mail->Subject = utf8_decode($asunto);
+				$mail->Body    = utf8_decode($mensaje);
+				$mail->IsHTML(true);
+
+				return $mail->send() ? true : false;
+			} catch (Exception $e) {
+				return false;
 			}
-	    }
+		}
 
-	    public function mail_Copia_Administrador($mensaje_Copia, $nombre_C, $documento_C, $correo_Usuario, $asunto_Copia, $telefono_C){
-	    //COPIA DE CORREOS ENVIADA AL ADMINISTRADOR DEL SISTEMA
-	    	require_once '../clases/PHPMailer/PHPMailerAutoload.php';
-	    	$remitente = 'notificaciones@solucionescooptraiss.com';
-			$empresa = 'COOPTRAISS';
-			$asunto = 'Copia - '.$asunto_Copia.' - '.$documento_C;
-			$mensaje = 'Cordial saludo: <br /><br />solucionescooptraiss.com informa que se ha enviado un correo al asociado: "'.$documento_C.'", nombre: "'.$nombre_C.'", celular: "'.$telefono_C.'", correo:"'.$correo_Usuario.'", asunto: "'.$asunto_Copia.'", con el siguiente mensaje:<br /><br />'.$mensaje_Copia;
-			$administrador = 'yerson.paez@cooptraiss.com';
-
-
-			$mail = new PHPMailer(true);
-			$mail->isSMTP();
-			$mail->SMTPAuth = true;
-			$mail->SMTPSecure = 'tls'; //Modificar
-			$mail->Host = 'mail.solucionescooptraiss.com'; //Modificar
-			$mail->Port = 587; //Modificar
-			$mail->Username = "notificaciones@solucionescooptraiss.com"; 
-			$mail->Password = "C00p_2021*";
-			
-			$mail->setFrom($remitente, $empresa); //Modificar
-			$mail->addAddress($administrador);
-			//$mail->addCC('solidaridad@cooptraiss.com');
-			
-			$mail->Subject = utf8_decode($asunto);
-			$mail->Body    = utf8_decode($mensaje);
-			$mail->IsHTML(true);
-			if($mail->send()){
-				//echo "copia enviada";
-			}else{
-				//echo "error de copia enviada";
-			}
-	    }
 
 	}
 
