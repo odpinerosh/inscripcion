@@ -87,7 +87,9 @@
             <div class="container-fluid dashboard-content" style="max-width: 400px;background-color: #e2f2e4"> 
                 <div style="margin: auto; text-align: center"><h3>INSCRIPCIÓN</h3></div>
                 <hr>             
-                <form id="inscripcion" name="inscripcion" autocomplete="off">
+                <!--form id="inscripcion" name="inscripcion" autocomplete="off"-->
+                <form id="inscripcion" name="inscripcion" autocomplete="off" enctype="multipart/form-data">
+
 
                     <!-- Contenedor login (se oculta cuando el OTP valida) -->
                     <div id="div_LoginOtp">

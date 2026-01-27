@@ -10,22 +10,28 @@ date_default_timezone_set("America/Bogota");
 	    }
 
 		public function consultar_Asociado($identificacion, $evento){
-			$query_bs_acces = "SELECT * FROM participantes_view WHERE part_Aso_Id = '$identificacion' AND even_Id = '$evento'";
-			//echo $query_bs_acces;
-			$bs_acces = mysqli_query( $this->conecta, $query_bs_acces);
-			if ($bs_acces) {
-				$totalRows_bs_acces = mysqli_num_rows($bs_acces);
-				if($totalRows_bs_acces >0){
-		        	$acceso = mysqli_fetch_array($bs_acces);
-		    	}else{
-		        	$acceso = false;
-		    	} 
-			}else{
-				$acceso = false;
+			$id = mysqli_real_escape_string($this->conecta, (string)$identificacion);
+
+			$sql = "
+				SELECT
+					aso_Id,
+					aso_Nombre,
+					aso_Correo,
+					aso_Celular,
+					aso_Delegado,
+					aso_Antiguedad
+				FROM asociados
+				WHERE aso_Id = '$id'
+				LIMIT 1
+			";
+
+			$rs = mysqli_query($this->conecta, $sql);
+			if ($rs && mysqli_num_rows($rs) > 0) {
+				return mysqli_fetch_assoc($rs);
 			}
-			//var_dump($query_bs_acces);
-			return $acceso;
+			return false;
 		}
+
 
 		public function consultar_Asociados(){
 			$query_bs_acces = "SELECT * FROM asociados";	
