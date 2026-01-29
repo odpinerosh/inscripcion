@@ -112,10 +112,6 @@
                         <button id="btnEnviarOtp" type="button" class="btn btn-primary mt-2">
                             Enviar código
                         </button>
-                        <button id="btnCancelarOtp" type="button" class="btn btn-secondary mt-2">
-                            Cancelar
-                        </button>
-
                     </div>
 
                     <!-- Paso 3: pedir código OTP -->
@@ -143,7 +139,7 @@
                     <div id='div_LoginAlert' class='form-group' style='margin-top:8px;'></div>
 
                     <!-- Botón opcional (deja Enter como flujo principal).  -->
-                    <div id='div_Validar' class='form-group' style='text-align: center'>
+                    <div id='div_Validar' class='form-group' style='text-align: center' display:none'>
                         <!--input class='btn btn-success' type='button' name='validar' id='validar' value='Continuar' class='form-control' style='font-size: large; font-weight:bold' onclick="validar_Documento()"-->
                         <button id="btnContinuarOtp" type="button" class="btn btn-primary">Continuar</button>
                     </div>

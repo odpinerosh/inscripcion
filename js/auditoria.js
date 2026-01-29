@@ -49,35 +49,103 @@ function validar_Acceso(){
     $(location).attr('href',urldat);
 }
 
-function validar_Formulario(){
-  var nombre = ($('#nombre').val() || '').trim();
-  var correo = ($('#correo').val() || '').trim();
-  var identificacion = ($('#identificacion').val() || '').trim();
+async function validar_Formulario() {
+  var esDelegado = parseInt($('#es_delegado').val() || '0', 10) === 1;
+  var requiereCert = parseInt($('#requiere_cert').val() || '0', 10) === 1;
 
-  var esDelegado = ($('#es_delegado').val() || '0') === '1';
-  var antiguedad = parseFloat($('#antiguedad').val() || '0');
-
+  // Validación front mínima
   var errores = [];
 
-  if (!esDelegado){
-    if (antiguedad < 5) errores.push("No cumples la antigüedad mínima de 5 años.");
-
-    if (!$('#chk_curso80').is(':checked')) errores.push("Debes certificar el curso de 80 horas.");
-    if (!$('#chk_no_directivo').is(':checked')) errores.push("Debes certificar lo de cargos directivos (últimos 3 años).");
-
-    var f = $('#soporte_pdf').get(0);
-    if (!(f && f.files && f.files.length === 1)) {
-      errores.push("Debes adjuntar el PDF único (certificado + cédula).");
+  if (!esDelegado) {
+    if (!$('#pdf_cedula').length || $('#pdf_cedula')[0].files.length === 0) {
+      errores.push('Debes adjuntar la fotocopia de la cédula (PDF).');
+    }
+    if (requiereCert) {
+      if (!$('#pdf_certificado').length || $('#pdf_certificado')[0].files.length === 0) {
+        errores.push('Debes adjuntar el certificado de cooperativismo (PDF).');
+      }
     }
   }
 
-  if (errores.length > 0) {
-    $('#errores').empty().show().html('<h5>Debes corregir:</h5>' + errores.join('<br>'));
+  if (errores.length) {
+    await Swal.fire({
+      icon: 'error',
+      title: 'Debes corregir',
+      html: errores.map(e => `• ${e}`).join('<br>')
+    });
     return;
   }
 
-  $('#errores').empty().hide();
-  realizar_Inscripcion();
+  // Confirmación
+  var r = await Swal.fire({
+    icon: 'question',
+    title: 'Confirmar inscripción',
+    text: '¿Está seguro de confirmar su inscripción?',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, confirmar',
+    cancelButtonText: 'No, cancelar'
+  });
+
+  if (!r.isConfirmed) return;
+
+  // UI loading
+  $('#div_Enviar').hide();
+  $('#div_Loading').show();
+
+  try {
+    var fd = new FormData();
+    fd.append('id_Asociado', $('#identificacion').val());
+    fd.append('id_Evento', $('#id_Evento').val()); // si lo tienes como hidden global; si no, ajustamos
+
+    if (!esDelegado) {
+      fd.append('pdf_cedula', $('#pdf_cedula')[0].files[0]);
+      if (requiereCert) {
+        fd.append('pdf_certificado', $('#pdf_certificado')[0].files[0]);
+      }
+    }
+
+    var resp = await fetch('controladores/eventos_Controller.php?accion=1', {
+      method: 'POST',
+      body: fd
+    });
+
+    var data = await resp.json().catch(() => ({}));
+    if (!resp.ok || !data.ok) {
+      throw new Error(data.msg || 'No fue posible completar la inscripción.');
+    }
+
+    await Swal.fire({
+      icon: 'success',
+      title: 'Inscripción realizada',
+      text: 'Su inscripción fue realizada con éxito',
+      confirmButtonText: 'Aceptar'
+    });
+
+    location.reload();
+
+  } catch (e) {
+    await Swal.fire({
+      icon: 'error',
+      title: 'Error',
+      text: e.message || 'Error inesperado'
+    });
+
+    $('#div_Loading').hide();
+    $('#div_Enviar').show();
+  }
+}
+
+
+function cancelar_Subida(){
+  if ($('#pdf_cedula').length) $('#pdf_cedula').val('');
+  if ($('#pdf_certificado').length) $('#pdf_certificado').val('');
+
+  // deshabilita si no delegado
+  var esDelegado = parseInt($('#es_delegado').val() || '0', 10) === 1;
+  if (!esDelegado) $('#enviar').prop('disabled', true);
+
+  // opcional: ocultar mensajes de error si los estás usando
+  $('#errores').hide().html('<h5>Debes corregir:</h5>');
 }
 
 
@@ -190,8 +258,12 @@ function cancelar_Otp(){
   try { if (xhrOtpPasoDoc) xhrOtpPasoDoc.abort(); } catch(e){}
   try { if (xhrOtpEnviar) xhrOtpEnviar.abort(); } catch(e){}
   try { if (xhrOtpVerificar) xhrOtpVerificar.abort(); } catch(e){}
-
   xhrOtpPasoDoc = xhrOtpEnviar = xhrOtpVerificar = null;
+
+  // limpiar también documento
+  $('#documento').val('');
+  $('#id_Asociado').val('');  
+  $('#id_Evento').val('');    
 
   // reset UI
   $('#correo_login').val('');
@@ -202,9 +274,14 @@ function cancelar_Otp(){
   $('#btnReenviarOtp').prop('disabled', false);
   $('#otpCooldownMsg').text('');
 
-  ui_LoginAlert('ok', 'Proceso cancelado. Puedes iniciar de nuevo.');
+  $('#div_LoginAlert').hide();
+  $('#div_LoginAlert').removeClass('alert-success alert-danger alert-warning alert-info');
+  $('#div_LoginAlert').html('');
+
+  //ui_LoginAlert('ok', 'Proceso cancelado.');
   $('#documento').focus();
 }
+
 
 // clicks cancelar
 $(document).on('click', '#btnCancelarOtp, #btnCancelarOtp2', function(e){
@@ -257,6 +334,7 @@ function paso_Documento_Otp(){
 
       // Asegura que estás en Paso 2 (correo)
       $('#div_CodigoLogin').hide();          // si ya estaba visible por un intento previo
+      $('#codigo_login').val('');              // limpia código previo
       $('#div_CorreoLogin').show();
 
       // Habilita el botón Enviar código al entrar al Paso 2
@@ -299,6 +377,7 @@ function solicitar_Codigo_Otp(){
     data: { id_Asociado: documento, id_Evento: evento, correo: correo },
     success: function(resp){
       if(resp && resp.ok){
+        $('#div_CorreoLogin').hide(); 
         $('#div_CodigoLogin').show();
         $('#codigo_login').val('').focus();
 
@@ -442,6 +521,7 @@ $(document).ready(function(){
     if ($('#documento').length && $('#correo_login').length && $('#codigo_login').length){
         init_LoginOtp();
     }
+    limpiarLoginOtp();
 });
 
 $(document).on('click', '#btnContinuarOtp', function(e){
@@ -449,6 +529,16 @@ $(document).on('click', '#btnContinuarOtp', function(e){
   paso_Documento_Otp(); // inicia OTP
 });
 
+function limpiarLoginOtp(){
+  $('#documento').val('');
+  $('#correo_login').val('');
+  $('#codigo_login').val('');
+}
+
+window.addEventListener('pageshow', function () {
+  // pageshow se dispara también cuando vuelves con el botón "atrás"
+  limpiarLoginOtp();
+});
 
 // ===== Parche: handlers delegados para evitar que "Enter" se pierda =====
 $(document).on("keydown", "#correo_login", function (e) {
@@ -487,24 +577,24 @@ function reiniciar_Inscripcion(){
   window.location.reload();
 }
 
-function toggleBtnInscribir(){
-  var esDelegado = ($('#es_delegado').val() || '0') === '1';
-
-  if (esDelegado){
+function toggleBtnInscribir() {
+  var esDelegado = parseInt($('#es_delegado').val() || '0', 10) === 1;
+  if (esDelegado) {
     $('#enviar').prop('disabled', false);
     return;
   }
 
-  var okCurso = $('#chk_curso80').is(':checked');
-  var okNoDir = $('#chk_no_directivo').is(':checked');
+  var requiereCert = parseInt($('#requiere_cert').val() || '0', 10) === 1;
 
-  var f = $('#soporte_pdf').get(0);
-  var okFile = (f && f.files && f.files.length === 1);
+  var okCed = ($('#pdf_cedula').length && $('#pdf_cedula')[0].files.length > 0);
+  var okCert = !requiereCert || ($('#pdf_certificado').length && $('#pdf_certificado')[0].files.length > 0);
 
-  $('#enviar').prop('disabled', !(okCurso && okNoDir && okFile));
+  $('#enviar').prop('disabled', !(okCed && okCert));
 }
 
+
 // Re-evaluar cada vez que cambie un requisito
-$(document).on('change', '#chk_curso80, #chk_no_directivo, #soporte_pdf', function(){
+$(document).on('change', '#pdf_cedula, #pdf_certificado', function () {
   toggleBtnInscribir();
 });
+
