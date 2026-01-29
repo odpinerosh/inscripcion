@@ -180,6 +180,38 @@ function validar_Celular(celular){
    #evento (hidden o select), #documento, #correo_login, #codigo_login,
    #div_CorreoLogin, #div_CodigoLogin, #div_LoginAlert, #div_LoginOtp
 ======================================================================= */
+// ===== Cancelar OTP (aborta requests y resetea UI) =====
+var xhrOtpPasoDoc = null;
+var xhrOtpEnviar = null;
+var xhrOtpVerificar = null;
+
+function cancelar_Otp(){
+  // abortar si hay requests en curso
+  try { if (xhrOtpPasoDoc) xhrOtpPasoDoc.abort(); } catch(e){}
+  try { if (xhrOtpEnviar) xhrOtpEnviar.abort(); } catch(e){}
+  try { if (xhrOtpVerificar) xhrOtpVerificar.abort(); } catch(e){}
+
+  xhrOtpPasoDoc = xhrOtpEnviar = xhrOtpVerificar = null;
+
+  // reset UI
+  $('#correo_login').val('');
+  $('#codigo_login').val('');
+  $('#div_CorreoLogin').hide();
+  $('#div_CodigoLogin').hide();
+  $('#btnEnviarOtp').prop('disabled', false);
+  $('#btnReenviarOtp').prop('disabled', false);
+  $('#otpCooldownMsg').text('');
+
+  ui_LoginAlert('ok', 'Proceso cancelado. Puedes iniciar de nuevo.');
+  $('#documento').focus();
+}
+
+// clicks cancelar
+$(document).on('click', '#btnCancelarOtp, #btnCancelarOtp2', function(e){
+  e.preventDefault();
+  cancelar_Otp();
+});
+
 
 function init_LoginOtp(){
     // Enter en cédula => solicitar correo
@@ -212,7 +244,7 @@ function paso_Documento_Otp(){
     return;
   }
 
-  $.ajax({
+  xhrOtpPasoDoc = $.ajax({
     type: "GET",
     url: "controladores/asociados_Controller.php",
     data: { accion: 8, id_Asociado: documento, id_Evento: evento },
@@ -260,7 +292,7 @@ function solicitar_Codigo_Otp(){
   // Evita doble clic antes de que el servidor responda
   $('#btnEnviarOtp').prop('disabled', true);
 
-  $.ajax({
+  xhrOtpVerificar = $.ajax({
     type: "POST",
     url: "controladores/asociados_Controller.php?accion=9",
     dataType: "json",
