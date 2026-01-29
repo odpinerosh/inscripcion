@@ -19,7 +19,9 @@ date_default_timezone_set("America/Bogota");
 					aso_Correo,
 					aso_Celular,
 					aso_Delegado,
-					aso_Antiguedad
+					aso_Antiguedad,
+					aso_Agen_Id,
+					aso_NAgencia
 				FROM asociados
 				WHERE aso_Id = '$id'
 				LIMIT 1

@@ -55,11 +55,18 @@
 				if (!$validar_Inscripcion ) {
 					$esDelegado = (int)($consultar_Asociado['aso_Delegado'] ?? 0);
 					$antiguedad = (float)($consultar_Asociado['aso_Antiguedad'] ?? 0);
+					$inhabil   = (int)($consultar_Asociado['aso_Inhabil'] ?? 0);
+					$empleado  = (int)($consultar_Asociado['aso_Empleado'] ?? 0);
+					$horas     = (float)($consultar_Asociado['aso_Horas'] ?? 0);
+					$requiereCert = ($horas < 80);
+
 
 					//mostrar formulario para inscripción
 					$html = "
 					<input type='hidden' id='es_delegado' name='es_delegado' value='".$esDelegado."'>
 					<input type='hidden' id='antiguedad' name='antiguedad' value='".$antiguedad."'>
+					<input type='hidden' id='requiere_cert' value='".($requiereCert ? "1":"0")."'>
+
 
 					<div id='div_Nombre' class='form-group'>
 						<h5>Nombre</h5>
@@ -99,53 +106,82 @@
 					if ($esDelegado === 1) {
 						$html .= "
 							<div class='alert alert-info' role='alert'>
-							Ya eres delegado actualmente. Puedes confirmar tu inscripción.
+								Ya eres delegado actualmente. Puedes confirmar tu inscripción.
 							</div>
 						";
 					} else {
+
+						// Bloqueos duros
+						if ($inhabil === 1) {
+							$html .= "
+							<div class='alert alert-danger' role='alert'>
+								No puedes inscribirte: actualmente estás <b>inhábil por mora</b>.
+							</div>
+							<div class='form-group' style='text-align:center'>
+								<button type='button' class='btn btn-secondary' onclick='reiniciar_Inscripcion()'>Salir</button>
+							</div>";
+							echo $html; exit;
+						}
+
+						if ($empleado === 1) {
+							$html .= "
+							<div class='alert alert-danger' role='alert'>
+								No puedes inscribirte: fuiste <b>empleado de confianza</b> en los últimos tres (3) años.
+							</div>
+							<div class='form-group' style='text-align:center'>
+								<button type='button' class='btn btn-secondary' onclick='reiniciar_Inscripcion()'>Salir</button>
+							</div>";
+							echo $html; exit;
+						}
+
 						if ($antiguedad < 5.0) {
 							$antiguedadTxt = number_format($antiguedad, 1, '.', '');
 							$html .= "
 							<div class='alert alert-danger' role='alert'>
-								No cumples la antigüedad mínima de 5 años para inscribirte como delegado. (Antigüedad actual: ".$antiguedadTxt." años)
+								No cumples la antigüedad mínima de <b>5 años</b>. (Antigüedad actual: {$antiguedadTxt} años)
 							</div>
 							<div class='form-group' style='text-align:center'>
 								<button type='button' class='btn btn-secondary' onclick='reiniciar_Inscripcion()'>Salir</button>
-							</div>
-							";
-							echo $html;
-							exit;
-					}
+							</div>";
+							echo $html; exit;
+						}
 
-					$html .= "
+						// Pasa reglas → pide PDFs
+						$html .= "
 						<hr>
 						<div class='alert alert-warning' role='alert'>
-						Debes adjuntar <b>UN SOLO archivo PDF</b> que incluya: <b>certificado del curso (80 horas)</b> y <b>copia de la cédula</b>.
+							Para confirmar tu inscripción debes adjuntar los soportes en PDF.
 						</div>
 
 						<div class='form-group'>
-						<div class='custom-control custom-checkbox'>
-							<input type='checkbox' class='custom-control-input' id='chk_curso80' name='chk_curso80' value='1'>
-							<label class='custom-control-label' for='chk_curso80'>Certifico que realicé el curso de 80 horas.</label>
+							<label><b>Fotocopia de la cédula (PDF)</b></label>
+							<input type='file' id='pdf_cedula' name='pdf_cedula' class='form-control' accept='application/pdf'>
+							<small class='text-muted'>Solo PDF.</small>
 						</div>
-						</div>
+						";
 
-						<div class='form-group'>
-						<div class='custom-control custom-checkbox'>
-							<input type='checkbox' class='custom-control-input' id='chk_no_directivo' name='chk_no_directivo' value='1'>
-							<label class='custom-control-label' for='chk_no_directivo'>
-							Certifico que no he ejercido cargos de dirección en la cooperativa en los últimos tres (3) años.
-							</label>
-						</div>
-						</div>
+						if ($requiereCert) {
+							$horasTxt = number_format($horas, 0, '.', '');
+							$html .= "
+							<div class='alert alert-info' role='alert'>
+								Registras <b>{$horasTxt} horas</b>. Como son menos de <b>80</b>, debes adjuntar el <b>certificado de cooperativismo</b>.
+							</div>
 
-						<div class='form-group'>
-						<label><b>Soporte (PDF único)</b></label>
-						<input type='file' id='soporte_pdf' name='soporte_pdf' class='form-control' accept='application/pdf'>
-						<small class='text-muted'>Solo PDF. Adjunta certificado + cédula en el mismo archivo.</small>
+							<div class='form-group'>
+								<label><b>Certificado curso Cooperativismo (PDF)</b></label>
+								<input type='file' id='pdf_certificado' name='pdf_certificado' class='form-control' accept='application/pdf'>
+								<small class='text-muted'>Solo PDF.</small>
+							</div>
+							";
+						}
+
+						$html .= "
+						<div class='form-group' style='text-align:center'>
+							<button type='button' class='btn btn-secondary' onclick='cancelar_Subida()'>Cancelar</button>
 						</div>
-					";
+						";
 					}
+
 
 					$disabled = ($esDelegado === 1) ? "" : "disabled";
 
