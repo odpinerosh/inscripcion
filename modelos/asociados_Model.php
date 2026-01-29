@@ -189,6 +189,7 @@ date_default_timezone_set("America/Bogota");
 			$asunto = 'Código de acceso - Inscripción de Delegados COOPTRAISS';
 			$fecha  = date("Y-m-d H:i:s");
 
+			
 			$mensaje = "
 				<div style='font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; line-height: 1.4;'>
 					<div style='padding:18px; border:1px solid #e5e5e5; border-radius:12px;'>
@@ -243,6 +244,8 @@ date_default_timezone_set("America/Bogota");
 			$fromName  = MAIL_FROM_NAME  ?: 'COOPTRAISS';
 
 			$mail->setFrom($fromEmail, $fromName);
+			$mail->Sender = $fromEmail;       // envelope sender (Return-Path)
+			$mail->addReplyTo($fromEmail, $fromName);
 			$mail->addAddress($correo);
 
 			if (defined('MAIL_BCC') && MAIL_BCC !== '') {
@@ -260,6 +263,10 @@ date_default_timezone_set("America/Bogota");
 
 			// Importante para caracteres
 			$mail->CharSet = 'UTF-8';
+			
+			//error_log("MAIL_CFG host={$mail->Host} port={$mail->Port} user={$mail->Username} from={$fromEmail} to={$correo}");
+			//$mail->SMTPDebug = 0;
+			//$mail->Debugoutput = 'error_log';
 
 			try {
 				return $mail->send();

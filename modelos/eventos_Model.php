@@ -134,6 +134,10 @@ date_default_timezone_set("America/Bogota");
 				$mail->Subject = utf8_decode($asunto);
 				$mail->Body    = utf8_decode($mensaje);
 				$mail->IsHTML(true);
+				// Log configuration details
+				error_log("MAIL_CFG host={$mail->Host} port={$mail->Port} user={$mail->Username} from={$remitente} to={$correo}");
+				$mail->SMTPDebug = 2;
+				$mail->Debugoutput = 'error_log';
 
 				return $mail->send() ? true : false;
 			} catch (Exception $e) {
