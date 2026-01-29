@@ -65,7 +65,7 @@
 					$html = "
 					<input type='hidden' id='es_delegado' name='es_delegado' value='".$esDelegado."'>
 					<input type='hidden' id='antiguedad' name='antiguedad' value='".$antiguedad."'>
-					<input type='hidden' id='requiere_cert' value='".($requiereCert ? "1":"0")."'>
+					<input type='hidden' id='requiere_cert' name='requiere_cert' value='".($requiereCert ? "1":"0")."'>
 
 
 					<div id='div_Nombre' class='form-group'>

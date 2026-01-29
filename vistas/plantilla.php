@@ -112,6 +112,10 @@
                         <button id="btnEnviarOtp" type="button" class="btn btn-primary mt-2">
                             Enviar código
                         </button>
+                        <button id="btnCancelarOtp" type="button" class="btn btn-secondary mt-2">
+                            Cancelar
+                        </button>
+
                     </div>
 
                     <!-- Paso 3: pedir código OTP -->
@@ -127,10 +131,13 @@
                         </button>
 
                         <button id="btnReenviarOtp" type="button" class="btn btn-outline-primary mt-2">
-                        Reenviar código
+                            Reenviar código
+                        </button>
+                        <button id="btnCancelarOtp" type="button" class="btn btn-secondary mt-2">
+                            Cancelar
                         </button>
                         <small id="otpCooldownMsg" class="text-muted" style="display:block;margin-top:6px;"></small>
-                        
+                      
                     </div>
 
                     <div id='div_LoginAlert' class='form-group' style='margin-top:8px;'></div>
