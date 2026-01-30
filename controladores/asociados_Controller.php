@@ -8,6 +8,12 @@
 
 	// Función para validar sesión OTP
 	function requireOtpSession($aso, $even) {
+
+		// Si es funcionario interno, no aplica OTP
+		if (!empty($_SESSION['FUNC_USER'])) {
+			return [true, ""];
+		}
+
 		if (empty($_SESSION['otp_ok']) || empty($_SESSION['otp_expires'])) {
 			return [false, "Debes validar tu acceso con el código enviado a tu correo antes de continuar."];
 		}
@@ -28,8 +34,9 @@
 
 	switch ($accion) {
 		case '1'://Consultar asociado
-			$id_Asociado = $_GET['id_Asociado'];
-			$id_Evento = $_GET['id_Evento'];
+			$id_Asociado = $_GET['id_Asociado'] ?? '';
+			$id_Evento   = $_GET['id_Evento'] ?? 'INSCRIPCIÓN DELEGADOS 2026';
+
 
 			// Validar sesión OTP
 			list($okSess, $msgSess) = requireOtpSession($id_Asociado, $id_Evento);
@@ -158,20 +165,43 @@
 							</div>";
 							echo $html; exit;
 						}
+					}
+					// Pasa reglas → en asociados pide PDF, en funcionarios es físico
+					$html .= "<hr>";
 
-						// Pasa reglas → pide PDFs
-						$html .= "<hr>";
+					if (!empty($_SESSION['FUNC_USER'])) {
 
-						if ($requiereCert) {
-						$horasTxt = number_format($horas, 0, '.', '');
+						// === FUNCIONARIOS: DOCUMENTOS FÍSICOS (NO PDF) ===
 						$html .= "
-							<div class='alert alert-success' role='alert'>
-							<b>Cumples con los requisitos para inscribirte</b><br>
-							Para continuar, adjunta en PDF:
+						<div class='alert alert-success' role='alert'>
+							<b>Cumple con los requisitos para inscribirse.</b><br>
+							Documentos físicos a solicitar:
 							<ul style='margin: 8px 0 0 -18px;'>
+							<li><b>Fotocopia de la cédula</b> (físico)</li>"
+							. ($requiereCert
+								? "<li><b>Certificado de cooperativismo</b> (físico) — registra ".number_format($horas,0,'.','')." horas y se requieren 80</li>"
+								: ""
+								)
+							. "</ul>
+						</div>
+						<div class='alert alert-info' role='alert'>
+							Nota: En este módulo interno <b>no se cargan adjuntos</b>.
+						</div>
+						";
+
+					} else {
+
+						// === ASOCIADOS:  ===
+						if ($requiereCert) {
+							$horasTxt = number_format($horas, 0, '.', '');
+							$html .= "
+							<div class='alert alert-success' role='alert'>
+								<b>Cumples con los requisitos para inscribirte</b><br>
+								Para continuar, adjunta en PDF:
+								<ul style='margin: 8px 0 0 -18px;'>
 								<li><b>Fotocopia de tu cédula</b></li>
 								<li><b>Certificado de cooperativismo</b> (registras {$horasTxt} horas y se requieren 80)</li>
-							</ul>
+								</ul>
 							</div>
 							<div class='form-group'>
 								<label><b>Fotocopia de la cédula (PDF)</b></label>
@@ -182,27 +212,24 @@
 								<label><b>Certificado curso Cooperativismo (PDF)</b></label>
 								<input type='file' id='pdf_certificado' name='pdf_certificado' class='form-control' accept='application/pdf'>
 								<small class='text-muted'>Solo PDF.</small>
-							</div>							
-						";
+							</div>
+							";
 						} else {
-						$html .= "
+							$html .= "
 							<div class='alert alert-success' role='alert'>
-							<b>Cumples con los requisitos para inscribirte</b><br>
-							Para continuar, adjunta una <b>fotocopia de tu cédula en PDF</b>.
+								<b>Cumples con los requisitos para inscribirte</b><br>
+								Para continuar, adjunta en PDF:
+								<ul style='margin: 8px 0 0 -18px;'>
+								<li><b>Fotocopia de tu cédula</b></li>
+								</ul>
 							</div>
 							<div class='form-group'>
 								<label><b>Fotocopia de la cédula (PDF)</b></label>
 								<input type='file' id='pdf_cedula' name='pdf_cedula' class='form-control' accept='application/pdf'>
 								<small class='text-muted'>Solo PDF.</small>
 							</div>
-						";
+							";
 						}
-
-						//$html .= "
-					/* 	<div class='form-group' style='text-align:center'>
-							<button type='button' class='btn btn-secondary' onclick='cancelar_Subida()'>Cancelar</button>
-						</div> */
-						//";
 					}
 
 
@@ -231,26 +258,25 @@
 
 					echo $html;
 
-					}else{
-						//mensaje informando que ya está inscrito
-						$inscripcion = $validar_Inscripcion['ins_Fecha'] ?? '';
-						$insTxt = htmlspecialchars((string)$inscripcion, ENT_QUOTES, 'UTF-8');
-						$idTxt  = htmlspecialchars((string)$id_Asociado, ENT_QUOTES, 'UTF-8');
+				}else{
+					//mensaje informando que ya está inscrito
+					$inscripcion = $validar_Inscripcion['ins_Fecha'] ?? '';
+					$insTxt = htmlspecialchars((string)$inscripcion, ENT_QUOTES, 'UTF-8');
+					$idTxt  = htmlspecialchars((string)$id_Asociado, ENT_QUOTES, 'UTF-8');
 
-						echo "
-						<div class='alert alert-primary' role='alert'>
-							El documento <b>{$idTxt}</b> ya se encuentra inscrito al evento.
-							".($insTxt !== '' ? " Registrado en <b>{$insTxt}</b>." : "")."
-						</div>
+					echo "
+					<div class='alert alert-primary' role='alert'>
+						El documento <b>{$idTxt}</b> ya se encuentra inscrito al evento.
+						".($insTxt !== '' ? " Registrado en <b>{$insTxt}</b>." : "")."
+					</div>
 
-						<div class='form-group' style='text-align:center'>
-							<button type='button' class='btn btn-secondary' onclick='window.location.reload()'>Salir</button>
-						</div>
-						";
-					}
-
-				
+					<div class='form-group' style='text-align:center'>
+						<button type='button' class='btn btn-secondary' onclick='window.location.reload()'>Salir</button>
+					</div>
+					";
+				}
 			}
+				
 		break;
 
 		case '2'://Consultar agencias

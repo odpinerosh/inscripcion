@@ -1,0 +1,188 @@
+$(document).on('submit', '#inscripcion', function(e){
+  e.preventDefault();
+  return false;
+});
+
+
+function mostrar_Agencias(){
+  var urldat = (window.INS_BASE || "") + "/controladores/asociados_Controller.php?accion=2";
+  var page = $(this).attr('data');
+  var dataString = 'page='+page;
+
+  $.ajax({
+    type: "GET",
+    url:  urldat,
+    data: dataString,
+    success: function(data) {
+      $('#div_Agencias').html(data);
+    }
+  });
+}
+
+function enviar_Documento(){
+  var evento = $('#evento').val();
+  var documento = $('#documento').val();
+  //var urldat="/inscripciones/controladores/asociados_Controller.php?accion=1&id_Asociado="+documento+"&id_Evento="+evento;
+  var urldat = (window.INS_BASE || "") + "/controladores/asociados_Controller.php?accion=1&id_Asociado=" + documento + "&id_Evento=" + evento;
+
+
+  $.ajax({
+    type: "GET",
+    url:  urldat,
+    success: function(data) {
+      $('#div_Datos').empty();
+      $('#div_Alertas').empty();
+      $('#div_Datos').html(data);
+
+      // En funcionarios NO validamos PDFs => habilitar siempre
+      toggleBtnInscribir();
+    }
+  });
+}
+
+// En funcionarios: sin OTP, entra directo
+function validar_Documento(){
+  var documento = $('#documento').val();
+  if (documento === '') {
+    alert('El número de identificación no puede estar vacío.');
+    return;
+  }
+  enviar_Documento();
+}
+
+// En funcionarios: confirmar y enviar (SIN validar adjuntos)
+async function validar_Formulario(){
+  const r = await Swal.fire({
+    icon: 'question',
+    title: 'Confirmar inscripción',
+    text: '¿Está seguro de confirmar su inscripción?',
+    showCancelButton: true,
+    confirmButtonText: 'Sí, confirmar',
+    cancelButtonText: 'No, cancelar'
+  });
+
+  if (!r.isConfirmed) return;
+
+  $('#enviar').prop('disabled', true);
+  realizar_Inscripcion();
+}
+
+function escHtml(s){
+  return String(s || '')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#039;');
+}
+
+
+function realizar_Inscripcion(){
+  var evento = $('#evento').val();
+  $('#div_Loading').show(300);
+  $('html, body').animate({ scrollTop: $("#div_Loading").offset().top }, 500);
+  $('#div_Validar').hide();
+  $('#div_Enviar').hide();
+
+  //var urldat = "controladores/eventos_Controller.php?accion=1&id_Evento=" + encodeURIComponent(evento);
+  var urldat = (window.INS_BASE || "") + "/controladores/eventos_Controller.php?accion=1&id_Evento=" + encodeURIComponent(evento);
+
+  var fd = new FormData(document.getElementById('inscripcion'));
+
+  $.ajax({
+    type: "POST",
+    url: urldat,
+    data: fd,
+    processData: false,
+    contentType: false,
+    //dataType: "json",
+    success: async function(data){
+      $('#div_Loading').hide();
+      $('#div_Validar').show();
+      $('#div_Enviar').show();
+
+      let resp = data;
+
+      // Si el servidor devolvió texto, intentamos parsear a JSON
+      if (typeof data === 'string') {
+        try {
+          resp = JSON.parse(data);
+        } catch (e) {
+          await Swal.fire({
+            icon: 'error',
+            title: 'Respuesta no válida (no es JSON)',
+            html: "<pre style='text-align:left;white-space:pre-wrap;max-height:300px;overflow:auto;'>" +
+                  escHtml((data || '').slice(0, 2000)) +
+                  "</pre>"
+          });
+          $('#enviar').prop('disabled', false);
+          return;
+        }
+      }
+
+      if (resp && resp.ok){
+        await Swal.fire({
+          icon: 'success',
+          title: 'Inscripción realizada',
+          text: resp.msg || 'Su inscripción fue realizada con éxito',
+          confirmButtonText: 'Aceptar'
+        });
+        window.location.reload();
+        return;
+      }
+
+      if (resp && resp.code === 'YA_INSCRITO'){
+        await Swal.fire({
+          icon: 'info',
+          title: 'Ya inscrito',
+          html: resp.msg || 'Ya estás inscrito en este evento.',
+          confirmButtonText: 'Salir',
+          allowOutsideClick: false,
+          allowEscapeKey: false
+        });
+        window.location.reload();
+        return;
+      }
+
+      await Swal.fire({
+        icon: 'error',
+        title: 'No se pudo completar',
+        text: (resp && resp.msg) ? resp.msg : 'Error al procesar la inscripción'
+      });
+      $('#enviar').prop('disabled', false);
+    },
+
+    error: async function(jqXHR, textStatus, errorThrown){
+      $('#div_Loading').hide();
+      $('#div_Validar').show();
+      $('#div_Enviar').show();
+
+      const body = (jqXHR.responseText || '').slice(0, 2000);
+
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error del servidor / Respuesta inesperada',
+        html:
+          "HTTP: <b>" + jqXHR.status + "</b> (" + escHtml(textStatus || '') + ")<br>" +
+          "<pre style='text-align:left;white-space:pre-wrap;max-height:300px;overflow:auto;'>" +
+          escHtml(body) +
+          "</pre>"
+      });
+
+      $('#enviar').prop('disabled', false);
+    }
+
+  });
+}
+
+function numeros(e){
+  const allow = ["Enter","Tab","Backspace","Delete","ArrowLeft","ArrowRight","ArrowUp","ArrowDown","Home","End"];
+  if (allow.includes(e.key)) return;
+  if (e.ctrlKey || e.metaKey) return;
+  if (!/^\d$/.test(e.key)) e.preventDefault();
+}
+
+// En funcionarios: siempre habilitado
+function toggleBtnInscribir(){
+  if ($('#enviar').length) $('#enviar').prop('disabled', false);
+}

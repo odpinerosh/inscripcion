@@ -16,8 +16,14 @@
 			header('Content-Type: application/json; charset=utf-8');
 
 			// Params
-			$id_Evento   = $_POST['id_Evento'] ?? ($_GET['id_Evento'] ?? '');
-			$id_Asociado = $_POST['id_Asociado'] ?? ($_POST['identificacion'] ?? '');
+			$id_Evento   = $_POST['id_Evento'] ?? ($_POST['evento'] ?? ($_GET['id_Evento'] ?? ''));
+			$id_Asociado = $_POST['id_Asociado'] ?? ($_POST['identificacion'] ?? ($_POST['documento'] ?? ''));
+
+			// Si viene vacío (por ser fijo), usar el evento único
+			if (trim((string)$id_Evento) === '') {
+				$id_Evento = 'EVENTO DELEGADOS 2026';
+			}
+
 			$correo      = $_POST['correo'] ?? '';
 			$celular     = $_POST['celular'] ?? '';
 
@@ -25,16 +31,27 @@
 			$msgSess = '';
 			$okSess = false;
 
-			if (!isset($_SESSION['otp_ok'], $_SESSION['otp_aso'], $_SESSION['otp_even'], $_SESSION['otp_expires'])) {
-				$msgSess = "Debes validar tu acceso con el código enviado a tu correo antes de continuar.";
-			} elseif (time() > (int)$_SESSION['otp_expires']) {
-				$_SESSION = [];
-				session_destroy();
-				$msgSess = "Tu sesión venció. Solicita un nuevo código e inténtalo de nuevo.";
-			} elseif ((string)$_SESSION['otp_aso'] !== (string)$id_Asociado || (string)$_SESSION['otp_even'] !== (string)$id_Evento) {
-				$msgSess = "Sesión inválida para este documento/evento.";
-			} else {
+			// Si es funcionario interno, no aplica OTP
+			if (!empty($_SESSION['FUNC_USER'])) {
 				$okSess = true;
+			} else {
+
+				if (!isset($_SESSION['otp_ok'], $_SESSION['otp_aso'], $_SESSION['otp_even'], $_SESSION['otp_expires'])) {
+					$msgSess = "Debes validar tu acceso con el código enviado a tu correo antes de continuar.";
+				} elseif (time() > (int)$_SESSION['otp_expires']) {
+					if (empty($_SESSION['FUNC_USER'])) {
+						$_SESSION = [];
+						session_destroy();
+					} else {
+						unset($_SESSION['otp_ok'], $_SESSION['otp_aso'], $_SESSION['otp_even'], $_SESSION['otp_expires']);
+					}
+					$msgSess = "Tu sesión venció. Solicita un nuevo código e inténtalo de nuevo.";
+				} elseif ((string)$_SESSION['otp_aso'] !== (string)$id_Asociado || (string)$_SESSION['otp_even'] !== (string)$id_Evento) {
+					$msgSess = "Sesión inválida para este documento/evento.";
+				} else {
+					$okSess = true;
+				}
+
 			}
 
 			if (!$okSess) {
@@ -42,10 +59,6 @@
 				exit;
 			}
 
-			if (trim((string)$id_Asociado) === '' || trim((string)$id_Evento) === '') {
-				echo json_encode(['ok'=>false, 'msg'=>'Parámetros incompletos (documento/evento).']);
-				exit;
-			}
 
 			// Modelos
 			$eventos = new Eventos();
@@ -135,61 +148,64 @@
 			// Soportes: delegado no sube nada
 			$rutas = ['cedula'=>null, 'certificado'=>null];
 
-			if (!$esDelegado) {
-				// Cédula obligatoria
-				if (!isset($_FILES['pdf_cedula'])) {
-					echo json_encode(['ok'=>false, 'msg'=>'Debes adjuntar la fotocopia de la cédula (PDF).']);
-					exit;
-				}
-				[$okPdf, $msgPdf] = $validatePdf($_FILES['pdf_cedula']);
-				if (!$okPdf) {
-					echo json_encode(['ok'=>false, 'msg'=>"Cédula: $msgPdf"]);
-					exit;
-				}
+			if (empty($_SESSION['FUNC_USER'])) {
 
-				// Certificado si aplica
-				if ($requiereCert) {
-					if (!isset($_FILES['pdf_certificado'])) {
-						echo json_encode(['ok'=>false, 'msg'=>'Debes adjuntar el certificado de cooperativismo (PDF).']);
+				if (!$esDelegado) {
+					// Cédula obligatoria
+					if (!isset($_FILES['pdf_cedula'])) {
+						echo json_encode(['ok'=>false, 'msg'=>'Debes adjuntar la fotocopia de la cédula (PDF).']);
 						exit;
 					}
-					[$okPdf2, $msgPdf2] = $validatePdf($_FILES['pdf_certificado']);
-					if (!$okPdf2) {
-						echo json_encode(['ok'=>false, 'msg'=>"Certificado: $msgPdf2"]);
+					[$okPdf, $msgPdf] = $validatePdf($_FILES['pdf_cedula']);
+					if (!$okPdf) {
+						echo json_encode(['ok'=>false, 'msg'=>"Cédula: $msgPdf"]);
 						exit;
 					}
-				}
 
-				// Guardar archivos en carpeta por cédula
-				$asoSafe = preg_replace('/[^0-9A-Za-z_-]/', '', (string)$id_Asociado);
-				$baseDir = __DIR__ . '/../soportes/inscripciones/' . $asoSafe . '/';
-				if (!is_dir($baseDir)) {
-					if (!mkdir($baseDir, 0755, true)) {
-						echo json_encode(['ok'=>false, 'msg'=>'No fue posible crear la carpeta de soportes.']);
+					// Certificado si aplica
+					if ($requiereCert) {
+						if (!isset($_FILES['pdf_certificado'])) {
+							echo json_encode(['ok'=>false, 'msg'=>'Debes adjuntar el certificado de cooperativismo (PDF).']);
+							exit;
+						}
+						[$okPdf2, $msgPdf2] = $validatePdf($_FILES['pdf_certificado']);
+						if (!$okPdf2) {
+							echo json_encode(['ok'=>false, 'msg'=>"Certificado: $msgPdf2"]);
+							exit;
+						}
+					}
+
+					// Guardar archivos en carpeta por cédula
+					$asoSafe = preg_replace('/[^0-9A-Za-z_-]/', '', (string)$id_Asociado);
+					$baseDir = __DIR__ . '/../soportes/inscripciones/' . $asoSafe . '/';
+					if (!is_dir($baseDir)) {
+						if (!mkdir($baseDir, 0755, true)) {
+							echo json_encode(['ok'=>false, 'msg'=>'No fue posible crear la carpeta de soportes.']);
+							exit;
+						}
+					}
+
+					$ts = date('Ymd_His');
+
+					// Guardar cédula
+					$cedName = 'cedula_' . $ts . '.pdf';
+					$cedAbs  = $baseDir . $cedName;
+					if (!move_uploaded_file($_FILES['pdf_cedula']['tmp_name'], $cedAbs)) {
+						echo json_encode(['ok'=>false, 'msg'=>'No fue posible guardar la fotocopia de la cédula.']);
 						exit;
 					}
-				}
+					$rutas['cedula'] = 'soportes/inscripciones/' . $asoSafe . '/' . $cedName;
 
-				$ts = date('Ymd_His');
-
-				// Guardar cédula
-				$cedName = 'cedula_' . $ts . '.pdf';
-				$cedAbs  = $baseDir . $cedName;
-				if (!move_uploaded_file($_FILES['pdf_cedula']['tmp_name'], $cedAbs)) {
-					echo json_encode(['ok'=>false, 'msg'=>'No fue posible guardar la fotocopia de la cédula.']);
-					exit;
-				}
-				$rutas['cedula'] = 'soportes/inscripciones/' . $asoSafe . '/' . $cedName;
-
-				// Guardar certificado si aplica
-				if ($requiereCert) {
-					$cerName = 'certificado_' . $ts . '.pdf';
-					$cerAbs  = $baseDir . $cerName;
-					if (!move_uploaded_file($_FILES['pdf_certificado']['tmp_name'], $cerAbs)) {
-						echo json_encode(['ok'=>false, 'msg'=>'No fue posible guardar el certificado de cooperativismo.']);
-						exit;
+					// Guardar certificado si aplica
+					if ($requiereCert) {
+						$cerName = 'certificado_' . $ts . '.pdf';
+						$cerAbs  = $baseDir . $cerName;
+						if (!move_uploaded_file($_FILES['pdf_certificado']['tmp_name'], $cerAbs)) {
+							echo json_encode(['ok'=>false, 'msg'=>'No fue posible guardar el certificado de cooperativismo.']);
+							exit;
+						}
+						$rutas['certificado'] = 'soportes/inscripciones/' . $asoSafe . '/' . $cerName;
 					}
-					$rutas['certificado'] = 'soportes/inscripciones/' . $asoSafe . '/' . $cerName;
 				}
 			}
 
@@ -233,9 +249,13 @@
 				$sent = $eventos->mail_ConfirmacionInscripcion($correo, $id_Asociado, $fecha);
 			}
 
-			// Cerrar sesión OTP después de inscribir
-			$_SESSION = [];
-			session_destroy();
+			// Cerrar SOLO la sesión OTP después de inscribir (no tumbar sesión de funcionario)
+			if (empty($_SESSION['FUNC_USER'])) {
+				$_SESSION = [];
+				session_destroy();
+			} else {
+				unset($_SESSION['otp_ok'], $_SESSION['otp_aso'], $_SESSION['otp_even'], $_SESSION['otp_expires']);
+			}
 
 			if (!$sent) {
 				echo json_encode([
