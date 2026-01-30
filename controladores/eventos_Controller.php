@@ -197,11 +197,35 @@
 			$fecha = date('Y-m-d H:i:s');
 			$rutaAdj = $esDelegado ? null : json_encode($rutas, JSON_UNESCAPED_SLASHES);
 
-			$ok = $eventos->crear_Inscripcion($id_Asociado, $fecha, $correo, $celular, $rutaAdj);
-			if (!$ok) {
-				echo json_encode(['ok'=>false, 'msg'=>'No fue posible registrar la inscripción.']);
-				exit;
+			// Insertar inscripción (adaptable a firma del modelo)
+			$fecha = date('Y-m-d H:i:s');
+			$rutaAdj = $esDelegado ? null : json_encode($rutas, JSON_UNESCAPED_SLASHES);
+
+			$ok = false;
+			try {
+				$rm = new ReflectionMethod($eventos, 'crear_Inscripcion');
+				$n  = $rm->getNumberOfParameters();
+
+				// Firma esperada más común: (id_Asociado, id_Evento, fecha, correo, celular, rutaAdj)
+				if ($n >= 6) {
+					$args = [$id_Asociado, $id_Evento, $fecha, $correo, $celular, $rutaAdj];
+					// si pide más params, los rellenamos con null
+					while (count($args) < $n) $args[] = null;
+					$ok = $rm->invokeArgs($eventos, $args);
+				} else {
+					// Firma antigua: (id_Asociado, fecha, correo, celular, rutaAdj)
+					$args = [$id_Asociado, $fecha, $correo, $celular, $rutaAdj];
+					$ok = $rm->invokeArgs($eventos, array_slice($args, 0, $n));
+				}
+			} catch (Throwable $e) {
+				$ok = false;
 			}
+
+			if (!$ok) {
+			echo json_encode(['ok'=>false, 'msg'=>'No fue posible registrar la inscripción.']);
+			exit;
+			}
+
 
 			// Correo confirmación (si falla, no anulamos inscripción)
 			$sent = true;
@@ -223,7 +247,7 @@
 
 			echo json_encode(['ok'=>true, 'msg'=>'Inscripción confirmada.']);
 		exit;
-		
+
 		case '3'://Generar Reporte
 			$usuario = $_GET['usuario'];
 			$password = $_GET['password'];

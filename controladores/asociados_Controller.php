@@ -196,6 +196,9 @@
 							style='font-size: large; font-weight:bold'
 							onclick='validar_Formulario()' ".$disabled.">
 					</div>
+					<div class='form-group' style='text-align:center'>
+    					<button type='button' class='btn btn-secondary' onclick='reiniciar_Inscripcion()'>Salir</button>
+  					</div>
 
 					<div id='div_Loading' class='form-group' style='text-align:center; display:none'>
 						<label>Se está procesando la solicitud, por favor espere.</label>
@@ -210,7 +213,7 @@
 					$inscripcion = $validar_Inscripcion ['ins_Fecha'];
 					echo"
 					<div class='alert alert-primary' role='alert'>
-	                    El documento ".$id_Asociado." ya se encuentra inscrito al evento. Registrado en ".$inscripcion."
+	                    El documento ".$id_Asociado." ya se encuentra inscrito. Registrado en ".$inscripcion."
 	                </div>";
 				}
 				

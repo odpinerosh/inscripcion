@@ -1,3 +1,7 @@
+$(document).on('submit', '#inscripcion', function(e){
+  e.preventDefault();
+  return false;
+});
 
 
 function mostrar_Agencias(){
@@ -86,8 +90,12 @@ async function validar_Formulario(){
 
   if (!r.isConfirmed) return;
 
-  realizar_Inscripcion(); // (sin await para no reescribir más de la cuenta)
+  // bloquear botón para evitar doble envío
+  $('#enviar').prop('disabled', true);
+
+  realizar_Inscripcion();
 }
+
 
 
 
@@ -99,7 +107,7 @@ function cancelar_Subida(){
   var esDelegado = parseInt($('#es_delegado').val() || '0', 10) === 1;
   if (!esDelegado) $('#enviar').prop('disabled', true);
 
-  // opcional: ocultar mensajes de error si los estás usando
+  // opcional: ocultar mensajes de error 
   $('#errores').hide().html('<h5>Debes corregir:</h5>');
 }
 
@@ -111,7 +119,7 @@ function realizar_Inscripcion(){
   $('#div_Validar').hide();
   $('#div_Enviar').hide();
 
-  // OJO: el backend UPDATED acepta id_Evento por GET (como ya lo tienes)
+  
   var urldat = "controladores/eventos_Controller.php?accion=1&id_Evento=" + encodeURIComponent(evento);
 
   var fd = new FormData(document.getElementById('inscripcion'));
@@ -122,7 +130,7 @@ function realizar_Inscripcion(){
     data: fd,
     processData: false,
     contentType: false,
-    dataType: "json",   // ✅ ahora esperamos JSON
+    dataType: "json",   //ahora esperamos JSON
     success: async function(resp){
 
       $('#div_Loading').hide();
@@ -159,6 +167,8 @@ function realizar_Inscripcion(){
         title: 'No se pudo completar',
         text: (resp && resp.msg) ? resp.msg : 'Error al procesar la inscripción'
       });
+      //Habilitar botón
+      $('#enviar').prop('disabled', false);
     },
     error: async function(xhr){
       $('#div_Loading').hide();
@@ -170,6 +180,8 @@ function realizar_Inscripcion(){
         title: 'Error',
         text: 'Error procesando la inscripción. Intenta nuevamente.'
       });
+      //Habilitar botón
+      $('#enviar').prop('disabled', false);
     }
   });
 }
@@ -363,7 +375,7 @@ function solicitar_Codigo_Otp(){
   // Evita doble clic antes de que el servidor responda
   $('#btnEnviarOtp').prop('disabled', true);
 
-  xhrOtpVerificar = $.ajax({
+  xhrOtpEnviar = $.ajax({
     type: "POST",
     url: "controladores/asociados_Controller.php?accion=9",
     dataType: "json",
