@@ -135,7 +135,7 @@ date_default_timezone_set("America/Bogota");
 				<div style='padding:20px 22px; color:#1f2a37;'>
 				<p style='margin:0 0 12px 0; font-size:14px;'>
 					Apreciado(a) asociado(a),<br>
-					Su inscripción ha sido <b>registrada correctamente</b>.
+					Tu inscripción ha sido <b>registrada correctamente</b>.
 				</p>
 
 				<table style='width:100%; border-collapse:collapse; font-size:14px; margin:12px 0 18px 0;'>
@@ -154,11 +154,11 @@ date_default_timezone_set("America/Bogota");
 				</table>
 
 				<div style='padding:12px 14px; background:#fff7ed; border:1px solid #fed7aa; border-radius:10px;'>
-					<b>Importante:</b> Su registro será verificado por la <b>Comisión Central Electoral de Escrutinios</b>.
+					<b>Importante:</b> Tu registro será verificado por la <b>Comisión Central Electoral de Escrutinios</b>.
 				</div>
 
 				<p style='margin:16px 0 0 0; font-size:13px; color:#374151;'>
-					Si requiere soporte, comuníquese al correo <b>eventos@cooptraiss.com</b>.
+					Si requieres soporte comunícate al correo <b>eventos@cooptraiss.com</b>.
 				</p>
 
 				<p style='margin:18px 0 0 0; font-size:13px; color:#6b7280;'>
@@ -168,7 +168,7 @@ date_default_timezone_set("America/Bogota");
 				</div>
 
 				<div style='padding:12px 22px; background:#f9fafb; color:#6b7280; font-size:12px; border-top:1px solid #e6e9ee;'>
-				Este es un mensaje automático. Por favor no comparta su código OTP con terceros.
+					Por favor no respondas este mensaje; se envía desde una cuenta de notificaciones automáticas.
 				</div>
 			</div>
 			</div>

@@ -184,42 +184,53 @@ date_default_timezone_set("America/Bogota");
 
 		// Enviar correo con OTP
 		public function mail_Otp($correo, $otp, $ttlMin){
-			// PHPMailer local
+			// PHPMailer
 			require_once __DIR__ . '/../clases/PHPMailer/PHPMailerAutoload.php';
-			// Config SMTP
-			require_once __DIR__ . '/../config/mail.php';
+
+			// Config SMTP externo de mail
+			$cfgPath = '/home/solucio1/cooptraiss_mail.php';
+			if (!is_readable($cfgPath)) {
+				error_log("MAIL_CFG no readable: $cfgPath");
+				return false;
+			}
+			$cfg = require $cfgPath;
+
 			// Logo en el correo
-			$logoPath = __DIR__ . '/../images/logo.jpg';  
+			$logoPath = __DIR__ . '/../images/logo.jpg';
 			$logoCid  = 'logo_cooptraiss';
+
 			// Contenido
 			$asunto = 'Código de acceso - Inscripción de Delegados COOPTRAISS';
 			$fecha  = date("Y-m-d H:i:s");
 
-			
+			$otpSafe = htmlspecialchars((string)$otp, ENT_QUOTES, 'UTF-8');
+			$ttlSafe = htmlspecialchars((string)$ttlMin, ENT_QUOTES, 'UTF-8');
+			$fechaSafe = htmlspecialchars((string)$fecha, ENT_QUOTES, 'UTF-8');
+
 			$mensaje = "
 				<div style='font-family: Arial, sans-serif; max-width: 560px; margin: 0 auto; line-height: 1.4;'>
 					<div style='padding:18px; border:1px solid #e5e5e5; border-radius:12px;'>
 						<div style='text-align:center; margin-bottom:20px;'>
 							<img src='cid:{$logoCid}' alt='COOPTRAISS' style='max-width:200px;'>
 						</div>
-					
-					<p style='margin:0 0 14px; font-size:14px; color:#333;'>
-						A continuación encuentras tu <b>código de acceso</b>:
-					</p>
 
-					<div style='font-size:30px; letter-spacing:6px; font-weight:700; padding:14px 16px;
-								border:1px dashed #08a750; border-radius:12px; display:inline-block; color:#111;'>
-						{$otp}
-					</div>
+						<p style='margin:0 0 14px; font-size:14px; color:#333;'>
+							A continuación encuentras tu <b>código de acceso</b>:
+						</p>
 
-					<p style='margin:14px 0 0; font-size:14px; color:#333;'>
-						<b>Vigencia:</b> {$ttlMin} minutos.
-					</p>
+						<div style='font-size:30px; letter-spacing:6px; font-weight:700; padding:14px 16px;
+									border:1px dashed #08a750; border-radius:12px; display:inline-block; color:#111;'>
+							{$otpSafe}
+						</div>
 
-					<p style='margin:14px 0 0; font-size:12px; color:#666;'>
-						Fecha/hora: {$fecha}<br>
-						Si no solicitaste este código, puedes ignorar este mensaje.
-					</p>
+						<p style='margin:14px 0 0; font-size:14px; color:#333;'>
+							<b>Vigencia:</b> {$ttlSafe} minutos.
+						</p>
+
+						<p style='margin:14px 0 0; font-size:12px; color:#666;'>
+							Fecha/hora: {$fechaSafe}<br>
+							Si no solicitaste este código, puedes ignorar este mensaje.
+						</p>
 					</div>
 
 					<p style='margin:12px 0 0; font-size:11px; color:#777; font-style:italic;'>
@@ -228,60 +239,67 @@ date_default_timezone_set("America/Bogota");
 				</div>
 			";
 
-			$mail = new PHPMailer(true);
-
-			// (Opcional) Debug: SOLO para pruebas controladas
-			if (defined('MAIL_DEBUG') && MAIL_DEBUG === true) {
-				$mail->SMTPDebug = 2; // muestra detalle SMTP
-				$mail->Debugoutput = 'error_log';
-			}
-
-			$mail->isSMTP();
-			$mail->Host       = MAIL_SMTP_HOST;
-			$mail->Port       = MAIL_SMTP_PORT;
-			$mail->SMTPAuth   = (bool)MAIL_SMTP_AUTH;
-			$mail->SMTPSecure = MAIL_SMTP_SECURE;
-
-			$mail->Username   = MAIL_SMTP_USER;
-			$mail->Password   = MAIL_SMTP_PASS;
-
-			
-			$fromEmail = MAIL_FROM_EMAIL ?: MAIL_SMTP_USER;
-			$fromName  = MAIL_FROM_NAME  ?: 'COOPTRAISS';
-
-			$mail->setFrom($fromEmail, $fromName);
-			$mail->Sender = $fromEmail;       // envelope sender (Return-Path)
-			$mail->addReplyTo($fromEmail, $fromName);
-			$mail->addAddress($correo);
-
-			if (defined('MAIL_BCC') && MAIL_BCC !== '') {
-				$mail->addBCC(MAIL_BCC);
-			}
-
-			$mail->Subject = utf8_decode($asunto);
-			if (file_exists($logoPath)) {
-			    $mail->addEmbeddedImage($logoPath, $logoCid, 'logo.jpg');
-			}
-
-			$mail->Body    = utf8_decode($mensaje);
-			$mail->AltBody = "Tu código de acceso es: {$otp}. Vigencia: {$ttlMin} minutos.";
-			$mail->isHTML(true);
-
-			// Importante para caracteres
-			$mail->CharSet = 'UTF-8';
-			
-			//error_log("MAIL_CFG host={$mail->Host} port={$mail->Port} user={$mail->Username} from={$fromEmail} to={$correo}");
-			//$mail->SMTPDebug = 0;
-			//$mail->Debugoutput = 'error_log';
-
 			try {
-				return $mail->send();
+				$mail = new PHPMailer(true);
+				$mail->CharSet = 'UTF-8';
+
+				// (Opcional) Debug: SOLO si lo activas en el config externo
+				if (!empty($cfg['debug']) && $cfg['debug'] === true) {
+					$mail->SMTPDebug = 2;
+					$mail->Debugoutput = 'error_log';
+				} else {
+					$mail->SMTPDebug = 0;
+				}
+
+				$mail->isSMTP();
+				$mail->SMTPAuth   = true;
+				$mail->SMTPSecure = $cfg['smtp_secure'] ?? 'tls';
+				$mail->Host       = $cfg['smtp_host'] ?? 'mail.solucionescooptraiss.com';
+				$mail->Port       = (int)($cfg['smtp_port'] ?? 587);
+
+				$mail->Username   = $cfg['smtp_user'] ?? '';
+				$mail->Password   = $cfg['smtp_pass'] ?? '';
+
+				if (trim($mail->Username) === '' || trim($mail->Password) === '') {
+					error_log("MAIL_CFG missing user/pass in $cfgPath");
+					return false;
+				}
+
+				$fromEmail = $cfg['from_email'] ?? $mail->Username;
+				$fromName  = $cfg['from_name'] ?? 'COOPTRAISS';
+
+				$mail->setFrom($fromEmail, $fromName);
+				$mail->Sender = $fromEmail; // Return-Path
+				$mail->addReplyTo($fromEmail, $fromName);
+
+				$mail->addAddress($correo);
+
+				if (!empty($cfg['bcc'])) {
+					$mail->addBCC($cfg['bcc']);
+				}
+
+				$mail->Subject = $asunto;
+
+				if (file_exists($logoPath)) {
+					$mail->addEmbeddedImage($logoPath, $logoCid, 'logo.jpg');
+				}
+
+				$mail->isHTML(true);
+				$mail->Body    = $mensaje;
+				$mail->AltBody = "Tu código de acceso es: {$otp}. Vigencia: {$ttlMin} minutos. Fecha/hora: {$fecha}";
+
+				$sent = $mail->send();
+				if (!$sent) {
+					error_log("MAIL_SEND_FAIL OTP to=$correo err=" . $mail->ErrorInfo);
+				}
+				return $sent;
+
 			} catch (Exception $e) {
-				// Log mínimo 
-				error_log("PHPMailer OTP error: " . $mail->ErrorInfo);
+				error_log("MAIL_EXCEPTION OTP to=$correo ex=" . $e->getMessage());
 				return false;
 			}
 		}
+
 
 
 
