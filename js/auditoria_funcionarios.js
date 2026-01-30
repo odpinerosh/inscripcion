@@ -20,7 +20,7 @@ function mostrar_Agencias(){
 }
 
 function enviar_Documento(){
-  var evento = $('#evento').val();
+
   var documento = $('#documento').val();
   //var urldat="/inscripciones/controladores/asociados_Controller.php?accion=1&id_Asociado="+documento+"&id_Evento="+evento;
   var urldat = (window.INS_BASE || "") + "/controladores/asociados_Controller.php?accion=1&id_Asociado=" + documento + "&id_Evento=" + evento;
@@ -78,14 +78,15 @@ function escHtml(s){
 
 
 function realizar_Inscripcion(){
-  var evento = $('#evento').val();
+  
   $('#div_Loading').show(300);
   $('html, body').animate({ scrollTop: $("#div_Loading").offset().top }, 500);
   $('#div_Validar').hide();
   $('#div_Enviar').hide();
 
   //var urldat = "controladores/eventos_Controller.php?accion=1&id_Evento=" + encodeURIComponent(evento);
-  var urldat = (window.INS_BASE || "") + "/controladores/eventos_Controller.php?accion=1&id_Evento=" + encodeURIComponent(evento);
+  var urldat = (window.INS_BASE || "") + "/controladores/eventos_Controller.php?accion=1";
+
 
   var fd = new FormData(document.getElementById('inscripcion'));
 

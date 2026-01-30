@@ -23,10 +23,7 @@ $contenido = '
 
   <div class="card">
     <form id="inscripcion" enctype="multipart/form-data">
-      <div style="margin-bottom:10px;">
-        <input type="hidden" id="evento" name="evento" value="ELECCION DE DELEGADOS 2026">
-      </div>
-
+      
       <div style="margin-bottom:10px;">
         <label><b>Cédula</b></label><br>
         <input type="text" id="documento" name="documento" onkeydown="numeros(event)" placeholder="Número de identificación" style="width:100%; padding:10px; border-radius:8px; border:1px solid #ddd;">
