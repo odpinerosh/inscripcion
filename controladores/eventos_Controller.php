@@ -11,16 +11,15 @@
 
 	switch ($accion) {
 
-		case '1': // Confirmar inscripción (HTML)
+		case '1': // Confirmar inscripción (JSON)
 			session_start();
+			header('Content-Type: application/json; charset=utf-8');
 
-			$id_Evento = $_GET['id_Evento'] ?? ''; // se conserva por compatibilidad
-			$id_Asociado = $_POST['identificacion'] ?? '';
-			$correo = $_POST['correo'] ?? '';
-			$celular = $_POST['celular'] ?? '';
-
-			$esDelegado = (int)($_POST['es_delegado'] ?? 0);
-			$antiguedad = (float)($_POST['antiguedad'] ?? 0);
+			// Params
+			$id_Evento   = $_POST['id_Evento'] ?? ($_GET['id_Evento'] ?? '');
+			$id_Asociado = $_POST['id_Asociado'] ?? ($_POST['identificacion'] ?? '');
+			$correo      = $_POST['correo'] ?? '';
+			$celular     = $_POST['celular'] ?? '';
 
 			// Guard de sesión OTP (mismo criterio del asociados_Controller)
 			$msgSess = '';
@@ -39,157 +38,192 @@
 			}
 
 			if (!$okSess) {
-				echo "<div class='alert alert-danger' role='alert'>".$msgSess."</div>";
+				echo json_encode(['ok'=>false, 'msg'=>$msgSess]);
 				exit;
 			}
 
-			if (trim($id_Asociado) === '' || trim($correo) === '') {
-				echo "<div class='alert alert-danger' role='alert'>Parámetros incompletos.</div>";
+			if (trim((string)$id_Asociado) === '' || trim((string)$id_Evento) === '') {
+				echo json_encode(['ok'=>false, 'msg'=>'Parámetros incompletos (documento/evento).']);
 				exit;
 			}
 
+			// Modelos
 			$eventos = new Eventos();
+			$asociados = new Asociados();
 
 			// Ya inscrito
 			$existe = $eventos->validar_Inscripcion($id_Asociado, $id_Evento);
 			if ($existe) {
 				$f = $existe['ins_Fecha'] ?? '';
-				echo "<div class='alert alert-primary' role='alert'>
-						El documento ".$id_Asociado." ya se encuentra inscrito. Registrado en ".$f."
-					</div>
-					<script>setTimeout(function(){ window.location.reload(); }, 2000);</script>";
+				echo json_encode([
+					'ok'=>false,
+					'code'=>'YA_INSCRITO',
+					'msg'=>"El documento $id_Asociado ya se encuentra inscrito. Registrado en $f."
+				]);
 				exit;
 			}
 
-			// Reglas
-			$rutaAdj = null;
+			// Consultar asociado (NO confiar en POST es_delegado/antiguedad)
+			$aso = $asociados->consultar_Asociado($id_Asociado, $id_Evento);
+			if (!$aso) {
+				echo json_encode(['ok'=>false, 'msg'=>'Asociado no encontrado.']);
+				exit;
+			}
 
-			if ($esDelegado !== 1) {
+			$esDelegado = (int)($aso['aso_Delegado'] ?? 0) === 1;
+			$antiguedad = (float)($aso['aso_Antiguedad'] ?? 0);
+			$inhabil    = (int)($aso['aso_Inhabil'] ?? 0) === 1;
+			$empleado   = (int)($aso['aso_Empleado'] ?? 0) === 1;
+			$horas      = (float)($aso['aso_Horas'] ?? 0);
+			$requiereCert = (!$esDelegado && $horas < 80);
+
+			// Reglas servidor
+			if (!$esDelegado) {
+				if ($inhabil) {
+					echo json_encode(['ok'=>false, 'code'=>'INHABIL_MORA', 'msg'=>'No puedes inscribirte: actualmente estás inhábil por mora.']);
+					exit;
+				}
+				if ($empleado) {
+					echo json_encode(['ok'=>false, 'code'=>'EX_EMPLEADO_CONFIANZA', 'msg'=>'No puedes inscribirte: fuiste empleado de confianza en los últimos tres (3) años.']);
+					exit;
+				}
 				if ($antiguedad < 5.0) {
-				echo "<div class='alert alert-danger' role='alert'>
-						No cumples la antigüedad mínima de 5 años para inscribirte.
-						</div>
-						<script>setTimeout(function(){ window.location.reload(); }, 2500);</script>";
-				exit;
+					$antTxt = number_format($antiguedad, 1, '.', '');
+					echo json_encode(['ok'=>false, 'code'=>'ANTIGUEDAD_INSUFICIENTE', 'msg'=>"No cumples la antigüedad mínima de 5 años. (Antigüedad actual: $antTxt años)"]);
+					exit;
 				}
+			}
 
-				$chkCurso = isset($_POST['chk_curso80']) && $_POST['chk_curso80'] == '1';
-				$chkNoDir = isset($_POST['chk_no_directivo']) && $_POST['chk_no_directivo'] == '1';
-
-				if (!$chkCurso || !$chkNoDir) {
-				echo "<div class='alert alert-danger' role='alert'>
-						Debes marcar las certificaciones requeridas.
-						</div>";
-				exit;
+			// Helpers: validar PDF por MIME real + cabecera
+			$maxBytes = 10 * 1024 * 1024; // 10MB
+			$validatePdf = function($file) use ($maxBytes) {
+				if (!isset($file) || !is_array($file) || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+					return [false, 'Archivo no recibido.'];
 				}
-
-				// Archivo PDF único obligatorio
-				if (!isset($_FILES['soporte_pdf']) || $_FILES['soporte_pdf']['error'] !== UPLOAD_ERR_OK) {
-				echo "<div class='alert alert-danger' role='alert'>
-						Debes adjuntar el archivo PDF único (certificado + cédula).
-						</div>";
-				exit;
-				}
-
-				error_log("UPLOAD soporte_pdf: name=".$_FILES['soporte_pdf']['name'].
-					" size=".$_FILES['soporte_pdf']['size'].
-					" tmp=".$_FILES['soporte_pdf']['tmp_name'].
-					" err=".$_FILES['soporte_pdf']['error'].
-					" type=".$_FILES['soporte_pdf']['type']);
-
-				// Validar PDF básico
-				// Extensión .pdf
-				// Cabecera %PDF
-				$tmp  = $_FILES['soporte_pdf']['tmp_name'];
-				$name = $_FILES['soporte_pdf']['name'] ?? '';
+				$name = $file['name'] ?? '';
+				$tmp  = $file['tmp_name'] ?? '';
 				$ext  = strtolower(pathinfo($name, PATHINFO_EXTENSION));
-				$size = (int)($_FILES['soporte_pdf']['size'] ?? 0);
+				$size = (int)($file['size'] ?? 0);
 
-				if ($ext !== 'pdf') {
-				echo "<div class='alert alert-danger' role='alert'>El archivo debe tener extensión .pdf.</div>";
-				exit;
-				}
+				if ($ext !== 'pdf') return [false, 'El archivo debe tener extensión .pdf.'];
+				if ($size <= 0) return [false, 'No fue posible leer el archivo subido (tamaño 0).'];
+				if ($size > $maxBytes) return [false, 'El archivo supera el tamaño permitido (10MB).'];
 
-				if ($size <= 0) {
-				echo "<div class='alert alert-danger' role='alert'>No fue posible leer el archivo subido (tamaño 0).</div>";
-				exit;
+				// MIME real
+				if (function_exists('finfo_open')) {
+					$finfo = finfo_open(FILEINFO_MIME_TYPE);
+					if ($finfo) {
+						$mime = finfo_file($finfo, $tmp);
+						finfo_close($finfo);
+						if ($mime !== 'application/pdf') {
+							return [false, 'El archivo no es un PDF válido (MIME).'];
+						}
+					}
 				}
 
 				$fh = @fopen($tmp, 'rb');
-				if (!$fh) {
-				echo "<div class='alert alert-danger' role='alert'>No fue posible leer el archivo subido.</div>";
-				exit;
-				}
-
+				if (!$fh) return [false, 'No fue posible leer el archivo subido.'];
 				$head = fread($fh, 4096);
 				fclose($fh);
-
-				error_log("UPLOAD head_hex=".bin2hex(substr($head, 0, 32)));
-
 				if ($head === '' || strpos($head, '%PDF') === false) {
-				echo "<div class='alert alert-danger' role='alert'>El archivo no parece ser un PDF válido.</div>";
-				exit;
+					return [false, 'El archivo no parece ser un PDF válido (cabecera).'];
 				}
 
+				return [true, 'OK'];
+			};
 
-				// Tamaño máximo 10MB
-				$maxBytes = 10 * 1024 * 1024; // 10MB
-				if ((int)$_FILES['soporte_pdf']['size'] > $maxBytes) {
-				echo "<div class='alert alert-danger' role='alert'>El archivo supera el tamaño permitido (10MB).</div>";
-				exit;
+			// Soportes: delegado no sube nada
+			$rutas = ['cedula'=>null, 'certificado'=>null];
+
+			if (!$esDelegado) {
+				// Cédula obligatoria
+				if (!isset($_FILES['pdf_cedula'])) {
+					echo json_encode(['ok'=>false, 'msg'=>'Debes adjuntar la fotocopia de la cédula (PDF).']);
+					exit;
+				}
+				[$okPdf, $msgPdf] = $validatePdf($_FILES['pdf_cedula']);
+				if (!$okPdf) {
+					echo json_encode(['ok'=>false, 'msg'=>"Cédula: $msgPdf"]);
+					exit;
 				}
 
-
-				// Guardar archivo
-				$baseDir = __DIR__ . '/../soportes/inscripciones/' . preg_replace('/[^0-9A-Za-z_-]/', '', (string)$id_Asociado) . '/';
-				if (!is_dir($baseDir)) {
-					if (!mkdir($baseDir, 0755, true)) {
-						echo "<div class='alert alert-danger' role='alert'>No fue posible crear la carpeta de soportes.</div>";
+				// Certificado si aplica
+				if ($requiereCert) {
+					if (!isset($_FILES['pdf_certificado'])) {
+						echo json_encode(['ok'=>false, 'msg'=>'Debes adjuntar el certificado de cooperativismo (PDF).']);
+						exit;
+					}
+					[$okPdf2, $msgPdf2] = $validatePdf($_FILES['pdf_certificado']);
+					if (!$okPdf2) {
+						echo json_encode(['ok'=>false, 'msg'=>"Certificado: $msgPdf2"]);
 						exit;
 					}
 				}
 
-				$fileName = 'soporte_' . date('Ymd_His') . '.pdf';
-				$destAbs = $baseDir . $fileName;
-
-				if (!move_uploaded_file($tmp, $destAbs)) {
-				echo "<div class='alert alert-danger' role='alert'>No fue posible guardar el archivo.</div>";
-				exit;
+				// Guardar archivos en carpeta por cédula
+				$asoSafe = preg_replace('/[^0-9A-Za-z_-]/', '', (string)$id_Asociado);
+				$baseDir = __DIR__ . '/../soportes/inscripciones/' . $asoSafe . '/';
+				if (!is_dir($baseDir)) {
+					if (!mkdir($baseDir, 0755, true)) {
+						echo json_encode(['ok'=>false, 'msg'=>'No fue posible crear la carpeta de soportes.']);
+						exit;
+					}
 				}
 
-				// Ruta relativa para BD
-				$rutaAdj = 'soportes/inscripciones/' . preg_replace('/[^0-9A-Za-z_-]/', '', (string)$id_Asociado) . '/' . $fileName;
+				$ts = date('Ymd_His');
+
+				// Guardar cédula
+				$cedName = 'cedula_' . $ts . '.pdf';
+				$cedAbs  = $baseDir . $cedName;
+				if (!move_uploaded_file($_FILES['pdf_cedula']['tmp_name'], $cedAbs)) {
+					echo json_encode(['ok'=>false, 'msg'=>'No fue posible guardar la fotocopia de la cédula.']);
+					exit;
+				}
+				$rutas['cedula'] = 'soportes/inscripciones/' . $asoSafe . '/' . $cedName;
+
+				// Guardar certificado si aplica
+				if ($requiereCert) {
+					$cerName = 'certificado_' . $ts . '.pdf';
+					$cerAbs  = $baseDir . $cerName;
+					if (!move_uploaded_file($_FILES['pdf_certificado']['tmp_name'], $cerAbs)) {
+						echo json_encode(['ok'=>false, 'msg'=>'No fue posible guardar el certificado de cooperativismo.']);
+						exit;
+					}
+					$rutas['certificado'] = 'soportes/inscripciones/' . $asoSafe . '/' . $cerName;
+				}
 			}
 
 			// Insertar inscripción
 			$fecha = date('Y-m-d H:i:s');
+			$rutaAdj = $esDelegado ? null : json_encode($rutas, JSON_UNESCAPED_SLASHES);
 
 			$ok = $eventos->crear_Inscripcion($id_Asociado, $fecha, $correo, $celular, $rutaAdj);
 			if (!$ok) {
-				echo "<div class='alert alert-danger' role='alert'>No fue posible registrar la inscripción.</div>";
+				echo json_encode(['ok'=>false, 'msg'=>'No fue posible registrar la inscripción.']);
 				exit;
 			}
 
-			// Correo confirmación
-			$sent = $eventos->mail_ConfirmacionInscripcion($correo, $id_Asociado, $fecha);
-			if (!$sent) {
-				echo "<div class='alert alert-warning' role='alert'>
-						Inscripción registrada, pero no fue posible enviar el correo de confirmación.
-					</div>
-					<script>setTimeout(function(){ window.location.reload(); }, 2500);</script>";
-				exit;
+			// Correo confirmación (si falla, no anulamos inscripción)
+			$sent = true;
+			if (trim((string)$correo) !== '') {
+				$sent = $eventos->mail_ConfirmacionInscripcion($correo, $id_Asociado, $fecha);
 			}
 
 			// Cerrar sesión OTP después de inscribir
 			$_SESSION = [];
 			session_destroy();
 
-			echo "<div class='alert alert-success' role='alert'>
-					Inscripción confirmada. En breve se reiniciará el formulario.
-					</div>
-					<script>setTimeout(function(){ window.location.reload(); }, 2000);</script>";
-		exit;
+			if (!$sent) {
+				echo json_encode([
+					'ok'=>true,
+					'msg'=>'Inscripción registrada, pero no fue posible enviar el correo de confirmación.'
+				]);
+				exit;
+			}
 
+			echo json_encode(['ok'=>true, 'msg'=>'Inscripción confirmada.']);
+		exit;
+		
 		case '3'://Generar Reporte
 			$usuario = $_GET['usuario'];
 			$password = $_GET['password'];

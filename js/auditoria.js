@@ -49,25 +49,24 @@ function validar_Acceso(){
     $(location).attr('href',urldat);
 }
 
-async function validar_Formulario() {
-  var esDelegado = parseInt($('#es_delegado').val() || '0', 10) === 1;
-  var requiereCert = parseInt($('#requiere_cert').val() || '0', 10) === 1;
+async function validar_Formulario(){
+  var esDelegado = ($('#es_delegado').val() || '0') === '1';
+  var requiereCert = ($('#requiere_cert').val() || '0') === '1';
 
-  // Validación front mínima
   var errores = [];
 
-  if (!esDelegado) {
-    if (!$('#pdf_cedula').length || $('#pdf_cedula')[0].files.length === 0) {
-      errores.push('Debes adjuntar la fotocopia de la cédula (PDF).');
+  if (!esDelegado){
+    if (!$('#pdf_cedula').length || $('#pdf_cedula')[0].files.length === 0){
+      errores.push("Debes adjuntar la fotocopia de la cédula (PDF).");
     }
-    if (requiereCert) {
-      if (!$('#pdf_certificado').length || $('#pdf_certificado')[0].files.length === 0) {
-        errores.push('Debes adjuntar el certificado de cooperativismo (PDF).');
+    if (requiereCert){
+      if (!$('#pdf_certificado').length || $('#pdf_certificado')[0].files.length === 0){
+        errores.push("Debes adjuntar el certificado de cooperativismo (PDF).");
       }
     }
   }
 
-  if (errores.length) {
+  if (errores.length){
     await Swal.fire({
       icon: 'error',
       title: 'Debes corregir',
@@ -76,8 +75,7 @@ async function validar_Formulario() {
     return;
   }
 
-  // Confirmación
-  var r = await Swal.fire({
+  const r = await Swal.fire({
     icon: 'question',
     title: 'Confirmar inscripción',
     text: '¿Está seguro de confirmar su inscripción?',
@@ -88,52 +86,9 @@ async function validar_Formulario() {
 
   if (!r.isConfirmed) return;
 
-  // UI loading
-  $('#div_Enviar').hide();
-  $('#div_Loading').show();
-
-  try {
-    var fd = new FormData();
-    fd.append('id_Asociado', $('#identificacion').val());
-    fd.append('id_Evento', $('#id_Evento').val()); // si lo tienes como hidden global; si no, ajustamos
-
-    if (!esDelegado) {
-      fd.append('pdf_cedula', $('#pdf_cedula')[0].files[0]);
-      if (requiereCert) {
-        fd.append('pdf_certificado', $('#pdf_certificado')[0].files[0]);
-      }
-    }
-
-    var resp = await fetch('controladores/eventos_Controller.php?accion=1', {
-      method: 'POST',
-      body: fd
-    });
-
-    var data = await resp.json().catch(() => ({}));
-    if (!resp.ok || !data.ok) {
-      throw new Error(data.msg || 'No fue posible completar la inscripción.');
-    }
-
-    await Swal.fire({
-      icon: 'success',
-      title: 'Inscripción realizada',
-      text: 'Su inscripción fue realizada con éxito',
-      confirmButtonText: 'Aceptar'
-    });
-
-    location.reload();
-
-  } catch (e) {
-    await Swal.fire({
-      icon: 'error',
-      title: 'Error',
-      text: e.message || 'Error inesperado'
-    });
-
-    $('#div_Loading').hide();
-    $('#div_Enviar').show();
-  }
+  realizar_Inscripcion(); // (sin await para no reescribir más de la cuenta)
 }
+
 
 
 function cancelar_Subida(){
@@ -151,12 +106,12 @@ function cancelar_Subida(){
 
 function realizar_Inscripcion(){
   var evento = $('#evento').val();
-
-  $('#div_Loading').show(1000);
-  $('html, body').animate({ scrollTop: $("#div_Loading").offset().top }, 1000);
+  $('#div_Loading').show(300);
+  $('html, body').animate({ scrollTop: $("#div_Loading").offset().top }, 500);
   $('#div_Validar').hide();
   $('#div_Enviar').hide();
 
+  // OJO: el backend UPDATED acepta id_Evento por GET (como ya lo tienes)
   var urldat = "controladores/eventos_Controller.php?accion=1&id_Evento=" + encodeURIComponent(evento);
 
   var fd = new FormData(document.getElementById('inscripcion'));
@@ -167,20 +122,58 @@ function realizar_Inscripcion(){
     data: fd,
     processData: false,
     contentType: false,
-    success: function(data){
+    dataType: "json",   // ✅ ahora esperamos JSON
+    success: async function(resp){
+
       $('#div_Loading').hide();
       $('#div_Validar').show();
       $('#div_Enviar').show();
-      $('#div_Alertas').html(data);
+
+      // resp = {ok, msg, code?}
+      if (resp && resp.ok){
+        await Swal.fire({
+          icon: 'success',
+          title: 'Inscripción realizada',
+          text: resp.msg || 'Su inscripción fue realizada con éxito',
+          confirmButtonText: 'Aceptar'
+        });
+        window.location.reload();
+        return;
+      }
+
+      // YA_INSCRITO => info
+      if (resp && resp.code === 'YA_INSCRITO'){
+        await Swal.fire({
+          icon: 'info',
+          title: 'Ya inscrito',
+          text: resp.msg || 'Ya estás inscrito en este evento.',
+          confirmButtonText: 'Aceptar'
+        });
+        window.location.reload();
+        return;
+      }
+
+      // error normal
+      await Swal.fire({
+        icon: 'error',
+        title: 'No se pudo completar',
+        text: (resp && resp.msg) ? resp.msg : 'Error al procesar la inscripción'
+      });
     },
-    error: function(xhr){
+    error: async function(xhr){
       $('#div_Loading').hide();
       $('#div_Validar').show();
       $('#div_Enviar').show();
-      mostrarErrorAjax(xhr, "Error procesando la inscripción. Intenta nuevamente.");
+
+      await Swal.fire({
+        icon: 'error',
+        title: 'Error',
+        text: 'Error procesando la inscripción. Intenta nuevamente.'
+      });
     }
   });
 }
+
 
 
 
@@ -577,20 +570,21 @@ function reiniciar_Inscripcion(){
   window.location.reload();
 }
 
-function toggleBtnInscribir() {
-  var esDelegado = parseInt($('#es_delegado').val() || '0', 10) === 1;
-  if (esDelegado) {
+function toggleBtnInscribir(){
+  var esDelegado = ($('#es_delegado').val() || '0') === '1';
+  if (esDelegado){
     $('#enviar').prop('disabled', false);
     return;
   }
 
-  var requiereCert = parseInt($('#requiere_cert').val() || '0', 10) === 1;
+  var requiereCert = ($('#requiere_cert').val() || '0') === '1';
 
   var okCed = ($('#pdf_cedula').length && $('#pdf_cedula')[0].files.length > 0);
-  var okCert = !requiereCert || ($('#pdf_certificado').length && $('#pdf_certificado')[0].files.length > 0);
+  var okCert = (!requiereCert) || ($('#pdf_certificado').length && $('#pdf_certificado')[0].files.length > 0);
 
   $('#enviar').prop('disabled', !(okCed && okCert));
 }
+
 
 
 // Re-evaluar cada vez que cambie un requisito
