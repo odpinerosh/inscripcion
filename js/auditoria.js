@@ -157,7 +157,7 @@ function realizar_Inscripcion(){
           text: resp.msg || 'Ya estás inscrito en este evento.',
           confirmButtonText: 'Aceptar'
         });
-        window.location.reload();
+        $('#enviar').prop('disabled', false);
         return;
       }
 

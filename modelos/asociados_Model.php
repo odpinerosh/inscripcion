@@ -10,29 +10,33 @@ date_default_timezone_set("America/Bogota");
 	    }
 
 		public function consultar_Asociado($identificacion, $evento){
-			$id = mysqli_real_escape_string($this->conecta, (string)$identificacion);
+		$id = mysqli_real_escape_string($this->conecta, (string)$identificacion);
 
-			$sql = "
-				SELECT
-					aso_Id,
-					aso_Nombre,
-					aso_Correo,
-					aso_Celular,
-					aso_Delegado,
-					aso_Antiguedad,
-					aso_Agen_Id,
-					aso_NAgencia
-				FROM asociados
-				WHERE aso_Id = '$id'
-				LIMIT 1
-			";
+		$sql = "
+			SELECT
+			aso_Id,
+			aso_Nombre,
+			aso_Correo,
+			aso_Celular,
+			aso_Delegado,
+			aso_Antiguedad,
+			aso_Inhabil,
+			aso_Empleado,
+			aso_Horas,
+			aso_Agen_Id,
+			aso_NAgencia
+			FROM asociados
+			WHERE aso_Id = '$id'
+			LIMIT 1
+		";
 
-			$rs = mysqli_query($this->conecta, $sql);
-			if ($rs && mysqli_num_rows($rs) > 0) {
-				return mysqli_fetch_assoc($rs);
-			}
-			return false;
+		$rs = mysqli_query($this->conecta, $sql);
+		if ($rs && mysqli_num_rows($rs) > 0) {
+			return mysqli_fetch_assoc($rs);
 		}
+		return false;
+		}
+
 
 
 		public function consultar_Asociados(){

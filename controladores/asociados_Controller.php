@@ -41,6 +41,19 @@
 			//consultar asociado
 			$asociados = New Asociados();
 			$consultar_Asociado = $asociados->consultar_Asociado($id_Asociado, $id_Evento);
+			
+			/* TEMPORAL - Desactivar consulta*/
+			/*error_log("KEYS consultar_Asociado: ".implode(',', array_keys($consultar_Asociado)));
+			error_log("VAL horas candidates: ".
+			json_encode([
+				'aso_Horas'  => $consultar_Asociado['aso_Horas']  ?? null,
+				'aso_horas'  => $consultar_Asociado['aso_horas']  ?? null,
+				'ASO_HORAS'  => $consultar_Asociado['ASO_HORAS']  ?? null,
+				'horas'      => $consultar_Asociado['horas']      ?? null,
+			])
+			);*/
+			/* FIN TEMPORAL */
+
 			if (!$consultar_Asociado) {
 				//mostar div con error
 				echo "
@@ -175,11 +188,11 @@
 							";
 						}
 
-						$html .= "
-						<div class='form-group' style='text-align:center'>
+						//$html .= "
+					/* 	<div class='form-group' style='text-align:center'>
 							<button type='button' class='btn btn-secondary' onclick='cancelar_Subida()'>Cancelar</button>
-						</div>
-						";
+						</div> */
+						//";
 					}
 
 
