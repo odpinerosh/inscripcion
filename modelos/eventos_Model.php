@@ -99,53 +99,124 @@ date_default_timezone_set("America/Bogota");
 		public function mail_ConfirmacionInscripcion($correo, $documento, $fecha){
 			require_once '../clases/PHPMailer/PHPMailerAutoload.php';
 
-			$remitente = 'notificaciones@solucionescooptraiss.com';
+			// Cargar config sensible (NO versionar este archivo)
+			// Contiene la información del servidor de correo saliente
+			// Estructura esperada: return ['smtp_host'=>..., 'smtp_port'=>..., 'smtp_user'=>..., 'smtp_pass'=>...];
+			$cfgPath = '/home/solucio1/cooptraiss_mail.php';
+
+			/*if (!file_exists($cfgPath)) {
+				// Si falta config, no intentamos enviar
+				return false;
+			}*/
+
+			if (!is_readable($cfgPath)) {
+			error_log("MAIL_CFG no readable: $cfgPath");
+			return false;
+			}
+
+
+			$cfg = require $cfgPath;
+
+			$remitente = $cfg['smtp_user'] ?? 'notificaciones@solucionescooptraiss.com';
 			$empresa   = 'COOPTRAISS';
-			$asunto    = 'Confirmación de inscripción/Delegados Cooptraiss 2026-2030';
+			$asunto    = 'Confirmación de inscripción / Delegados COOPTRAISS 2026-2030';
+
+			$doc = htmlspecialchars((string)$documento, ENT_QUOTES, 'UTF-8');
+			$fh  = htmlspecialchars((string)$fecha, ENT_QUOTES, 'UTF-8');
 
 			$mensaje = "
-				<div style='font-family: Arial, sans-serif; font-size: 14px; color:#111'>
-				<p>Apreciado(a) asociado(a),</p>
-				<p>Su inscripción ha sido registrada correctamente.</p>
-				<p>
-					<b>Documento:</b> ".htmlspecialchars((string)$documento)."<br>
-					<b>Fecha:</b> ".htmlspecialchars((string)$fecha)."
+			<div style='font-family: Arial, Helvetica, sans-serif; background:#f5f7f9; padding:24px;'>
+			<div style='max-width:640px; margin:0 auto; background:#ffffff; border-radius:12px; overflow:hidden; border:1px solid #e6e9ee;'>
+				<div style='background:#08a750; color:#fff; padding:18px 22px;'>
+				<h2 style='margin:0; font-size:18px;'>Inscripción confirmada</h2>
+				<div style='opacity:.95; font-size:13px; margin-top:4px;'>Delegados COOPTRAISS 2026-2030</div>
+				</div>
+
+				<div style='padding:20px 22px; color:#1f2a37;'>
+				<p style='margin:0 0 12px 0; font-size:14px;'>
+					Apreciado(a) asociado(a),<br>
+					Su inscripción ha sido <b>registrada correctamente</b>.
 				</p>
-				<p style='margin-top:18px'>
-					Por favor no responda este mensaje. Si requiere soporte, comuníquese al correo
-					<b>eventos@cooptraiss.com</b>.
+
+				<table style='width:100%; border-collapse:collapse; font-size:14px; margin:12px 0 18px 0;'>
+					<tr>
+					<td style='padding:8px 10px; background:#f3f4f6; width:38%; border:1px solid #e5e7eb;'><b>Documento</b></td>
+					<td style='padding:8px 10px; border:1px solid #e5e7eb;'>$doc</td>
+					</tr>
+					<tr>
+					<td style='padding:8px 10px; background:#f3f4f6; border:1px solid #e5e7eb;'><b>Fecha y hora</b></td>
+					<td style='padding:8px 10px; border:1px solid #e5e7eb;'>$fh</td>
+					</tr>
+					<tr>
+					<td style='padding:8px 10px; background:#f3f4f6; border:1px solid #e5e7eb;'><b>Estado</b></td>
+					<td style='padding:8px 10px; border:1px solid #e5e7eb;'><b>Registrado</b> (pendiente de verificación)</td>
+					</tr>
+				</table>
+
+				<div style='padding:12px 14px; background:#fff7ed; border:1px solid #fed7aa; border-radius:10px;'>
+					<b>Importante:</b> Su registro será verificado por la <b>Comisión Central Electoral de Escrutinios</b>.
+				</div>
+
+				<p style='margin:16px 0 0 0; font-size:13px; color:#374151;'>
+					Si requiere soporte, comuníquese al correo <b>eventos@cooptraiss.com</b>.
+				</p>
+
+				<p style='margin:18px 0 0 0; font-size:13px; color:#6b7280;'>
+					Cordialmente,<br>
+					<b>COOPTRAISS</b>
 				</p>
 				</div>
+
+				<div style='padding:12px 22px; background:#f9fafb; color:#6b7280; font-size:12px; border-top:1px solid #e6e9ee;'>
+				Este es un mensaje automático. Por favor no comparta su código OTP con terceros.
+				</div>
+			</div>
+			</div>
 			";
+
+			$altText = "Inscripción confirmada.\nDocumento: $documento\nFecha y hora: $fecha\n\nImportante: Su registro será verificado por la Comisión Central Electoral de Escrutinios.\n\nSoporte: eventos@cooptraiss.com\nCOOPTRAISS";
 
 			try {
 				$mail = new PHPMailer(true);
+				$mail->CharSet  = 'UTF-8';
 				$mail->isSMTP();
-				$mail->SMTPAuth   = true;
+				$mail->SMTPAuth = true;
 				$mail->SMTPSecure = 'tls';
-				$mail->Host       = 'mail.solucionescooptraiss.com';
-				$mail->Port       = 587;
-				$mail->Username   = "notificaciones@solucionescooptraiss.com";
-				$mail->Password   = "C00p_2021*";
 
-				$mail->setFrom($remitente, $empresa);
+				$mail->Host     = $cfg['smtp_host'] ?? 'mail.solucionescooptraiss.com';
+				$mail->Port     = (int)($cfg['smtp_port'] ?? 587);
+				$mail->Username = $cfg['smtp_user'] ?? $remitente;
+				$mail->Password = $cfg['smtp_pass'] ?? '';
+
+				if (trim($mail->Password) === '') {
+					return false; // no enviamos si no hay pass
+				}
+
+				$mail->setFrom($mail->Username, $empresa);
+
 				$mail->addAddress($correo);
 
-				$mail->Subject = utf8_decode($asunto);
-				$mail->Body    = utf8_decode($mensaje);
-				$mail->IsHTML(true);
-				// Log configuration details
-				error_log("MAIL_CFG host={$mail->Host} port={$mail->Port} user={$mail->Username} from={$remitente} to={$correo}");
-				$mail->SMTPDebug = 2;
+				$mail->Subject = $asunto;
+				$mail->isHTML(true);
+				$mail->Body    = $mensaje;
+				$mail->AltBody = $altText;
+
+				// Producción: debug apagado
+				$mail->SMTPDebug  = 0;
 				$mail->Debugoutput = 'error_log';
 
-				return $mail->send() ? true : false;
+				$sent = $mail->send();
+				if (!$sent) {
+				error_log("MAIL_SEND_FAIL to=$correo err=" . $mail->ErrorInfo);
+				}
+				return $sent ? true : false;
+
+				//return $mail->send() ? true : false;
+
 			} catch (Exception $e) {
+				error_log("MAIL_EXCEPTION to=$correo ex=" . $e->getMessage());
 				return false;
 			}
 		}
-
-
 	}
-
-?>
+	
