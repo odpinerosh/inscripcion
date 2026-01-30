@@ -160,11 +160,6 @@
             </div>
         </div>
     </div>
-    <div class="text-center my-3">
-        <a class="btn btn-outline-success" href="https://www.cooptraiss.com" target="_blank" rel="noopener">
-            Regresar
-        </a>
-    </div>
 
     <footer style="background-color: #289548">
         <div style="text-align: center; margin-top: 10px; color: white">  

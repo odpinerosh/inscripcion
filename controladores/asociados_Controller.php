@@ -160,32 +160,42 @@
 						}
 
 						// Pasa reglas → pide PDFs
-						$html .= "
-						<hr>
-						<div class='alert alert-warning' role='alert'>
-							Para confirmar tu inscripción debes adjuntar los soportes en PDF.
-						</div>
-
-						<div class='form-group'>
-							<label><b>Fotocopia de la cédula (PDF)</b></label>
-							<input type='file' id='pdf_cedula' name='pdf_cedula' class='form-control' accept='application/pdf'>
-							<small class='text-muted'>Solo PDF.</small>
-						</div>
-						";
+						$html .= "<hr>";
 
 						if ($requiereCert) {
-							$horasTxt = number_format($horas, 0, '.', '');
-							$html .= "
-							<div class='alert alert-info' role='alert'>
-								Registras <b>{$horasTxt} horas</b>. Como son menos de <b>80</b>, debes adjuntar el <b>certificado de cooperativismo</b>.
+						$horasTxt = number_format($horas, 0, '.', '');
+						$html .= "
+							<div class='alert alert-success' role='alert'>
+							<b>Cumples con los requisitos para inscribirte</b><br>
+							Para continuar, adjunta en PDF:
+							<ul style='margin: 8px 0 0 -18px;'>
+								<li><b>Fotocopia de tu cédula</b></li>
+								<li><b>Certificado de cooperativismo</b> (registras {$horasTxt} horas y se requieren 80)</li>
+							</ul>
 							</div>
-
+							<div class='form-group'>
+								<label><b>Fotocopia de la cédula (PDF)</b></label>
+								<input type='file' id='pdf_cedula' name='pdf_cedula' class='form-control' accept='application/pdf'>
+								<small class='text-muted'>Solo PDF.</small>
+							</div>
 							<div class='form-group'>
 								<label><b>Certificado curso Cooperativismo (PDF)</b></label>
 								<input type='file' id='pdf_certificado' name='pdf_certificado' class='form-control' accept='application/pdf'>
 								<small class='text-muted'>Solo PDF.</small>
+							</div>							
+						";
+						} else {
+						$html .= "
+							<div class='alert alert-success' role='alert'>
+							<b>Cumples con los requisitos para inscribirte</b><br>
+							Para continuar, adjunta una <b>fotocopia de tu cédula en PDF</b>.
 							</div>
-							";
+							<div class='form-group'>
+								<label><b>Fotocopia de la cédula (PDF)</b></label>
+								<input type='file' id='pdf_cedula' name='pdf_cedula' class='form-control' accept='application/pdf'>
+								<small class='text-muted'>Solo PDF.</small>
+							</div>
+						";
 						}
 
 						//$html .= "
