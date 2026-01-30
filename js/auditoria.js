@@ -149,17 +149,21 @@ function realizar_Inscripcion(){
         return;
       }
 
-      // YA_INSCRITO => info
+      // YA_INSCRITO => info + botón Salir que recarga
       if (resp && resp.code === 'YA_INSCRITO'){
         await Swal.fire({
           icon: 'info',
           title: 'Ya inscrito',
-          text: resp.msg || 'Ya estás inscrito en este evento.',
-          confirmButtonText: 'Aceptar'
+          html: (resp && resp.msg) ? resp.msg : 'Ya estás inscrito en este evento.',
+          confirmButtonText: 'Salir',
+          allowOutsideClick: false,
+          allowEscapeKey: false
         });
-        $('#enviar').prop('disabled', false);
+
+        window.location.reload();
         return;
       }
+
 
       // error normal
       await Swal.fire({

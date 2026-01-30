@@ -231,14 +231,24 @@
 
 					echo $html;
 
-				}else{
-					//mensaje informando que ya está inscrito
-					$inscripcion = $validar_Inscripcion ['ins_Fecha'];
-					echo"
-					<div class='alert alert-primary' role='alert'>
-	                    El documento ".$id_Asociado." ya se encuentra inscrito. Registrado en ".$inscripcion."
-	                </div>";
-				}
+					}else{
+						//mensaje informando que ya está inscrito
+						$inscripcion = $validar_Inscripcion['ins_Fecha'] ?? '';
+						$insTxt = htmlspecialchars((string)$inscripcion, ENT_QUOTES, 'UTF-8');
+						$idTxt  = htmlspecialchars((string)$id_Asociado, ENT_QUOTES, 'UTF-8');
+
+						echo "
+						<div class='alert alert-primary' role='alert'>
+							El documento <b>{$idTxt}</b> ya se encuentra inscrito al evento.
+							".($insTxt !== '' ? " Registrado en <b>{$insTxt}</b>." : "")."
+						</div>
+
+						<div class='form-group' style='text-align:center'>
+							<button type='button' class='btn btn-secondary' onclick='window.location.reload()'>Salir</button>
+						</div>
+						";
+					}
+
 				
 			}
 		break;
