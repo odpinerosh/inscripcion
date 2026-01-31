@@ -146,12 +146,12 @@
 						if ($inhabil === 1) {
 							$html .= "
 							<div class='alert alert-danger' role='alert'>
-								<b>⛔ No habilitado para inscripción</b><br>
-								Motivo: <b>Asociado inhábil por mora</b>.
+								<b>⛔ No habilitado para inscripción</b>
+								<p>Motivo: <b>Asociado inhábil por mora</b>.</p>
 								<div style='margin-top:6px;'>
 									Acción sugerida: verificar con <b>Cartera</b> antes de continuar.
 								</div>
-							</div>
+							</div><br>
 							<div class='form-group' style='text-align:center'>
 								<button type='button' class='btn btn-secondary' onclick='{$salirOnClick}'>Salir</button>
 							</div>";
@@ -161,9 +161,9 @@
 						if ($empleado === 1) {
 							$html .= "
 							<div class='alert alert-danger' role='alert'>
-								<b>⛔ No habilitado para inscripción</b><br>
-								Motivo: <b>Fue empleado de confianza</b> en los últimos tres años.							
-							</div>
+								<b>⛔ No habilitado para inscripción</b>
+								<p>Motivo: <b>Fue empleado de confianza</b> en los últimos tres años.</p>							
+							</div><br>
 							<div class='form-group' style='text-align:center'>
 								<button type='button' class='btn btn-secondary' onclick='r{$salirOnClick}'>Salir</button>
 							</div>";
@@ -174,8 +174,9 @@
 							$antiguedadTxt = number_format($antiguedad, 1, '.', '');
 							$html .= "
 							<div class='alert alert-danger' role='alert'>
-								No cumples la antigüedad mínima de <b>5 años</b>. (Antigüedad actual: {$antiguedadTxt} años)
-							</div>
+								<b>⛔ No habilitado para inscripción</b>
+								<p>Motivo: No cumple la antigüedad mínima de <b>5 años</b>. (Antigüedad actual: {$antiguedadTxt} años)</p>
+							</div><br>
 							<div class='form-group' style='text-align:center'>
 								<button type='button' class='btn btn-secondary' onclick='reiniciar_Inscripcion()'>Salir</button>
 							</div>";
