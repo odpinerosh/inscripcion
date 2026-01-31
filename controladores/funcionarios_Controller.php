@@ -84,59 +84,64 @@ switch ($accion) {
         header("Location: /inscripciones/vistas/funcionarios/index.php");
         exit;
 
+case 'crear_usuario':
+    if (empty($_SESSION['FUNC_USER'])) {
+        header("Location: /inscripciones/vistas/funcionarios/login.php");
+        exit;
+    }
+    if (empty($_SESSION['FUNC_USER']['usuario']) || $_SESSION['FUNC_USER']['usuario'] !== 'admin') {
+        http_response_code(403);
+        echo "Acceso denegado.";
+        exit;
+    }
 
-    case 'crear_usuario':
-        if (empty($_SESSION['FUNC_USER'])) {
-            header("Location: /inscripciones/vistas/funcionarios/login.php");
-            exit;
-        }
-        if (empty($_SESSION['FUNC_USER']['usuario']) || $_SESSION['FUNC_USER']['usuario'] !== 'admin') {
-            http_response_code(403);
-            echo "Acceso denegado.";
-            exit;
-        }
+    $usuario  = trim($_POST['usuario'] ?? '');
+    $nombreU  = trim($_POST['nombre'] ?? '');
+    $passU1   = (string)($_POST['password'] ?? '');
+    $passU2   = (string)($_POST['password2'] ?? '');
 
-        $usuario = trim($_POST['usuario'] ?? '');
-        $nombreU = trim($_POST['nombre'] ?? '');
-        $passU   = $_POST['password'] ?? '';
+    if ($usuario === '' || $nombreU === '' || $passU1 === '' || $passU2 === '') {
+        header("Location: /inscripciones/vistas/funcionarios/crear_usuario.php?e=1");
+        exit;
+    }
+    if ($passU1 !== $passU2) {
+        header("Location: /inscripciones/vistas/funcionarios/crear_usuario.php?e=2");
+        exit;
+    }
 
-        if ($usuario === '' || $nombreU === '' || $passU === '') {
-            header("Location: /inscripciones/vistas/funcionarios/crear_usuario.php?e=1");
-            exit;
-        }
+    $usuario = preg_replace('/\s+/', '', $usuario);
 
-        $usuario = preg_replace('/\s+/', '', $usuario);
+    $cn = Conectar::conexion();
 
-        $cn = Conectar::conexion();
+    // Verificar si existe (sin get_result)
+    $stmt = $cn->prepare("SELECT id FROM usuarios_funcionarios WHERE usuario=? LIMIT 1");
+    $stmt->bind_param("s", $usuario);
+    $stmt->execute();
+    $stmt->bind_result($id_existente);
+    $stmt->fetch();
+    $stmt->close();
 
-        // Verificar si existe (sin get_result)
-        $stmt = $cn->prepare("SELECT id FROM usuarios_funcionarios WHERE usuario=? LIMIT 1");
-        $stmt->bind_param("s", $usuario);
-        $stmt->execute();
-        $stmt->bind_result($id_existente);
-        $stmt->fetch();
-        $stmt->close();
+    if (!empty($id_existente)) {
+        header("Location: /inscripciones/vistas/funcionarios/crear_usuario.php?e=3");
+        exit;
+    }
 
-        if (!empty($id_existente)) {
-            header("Location: /inscripciones/vistas/funcionarios/crear_usuario.php?e=2");
-            exit;
-        }
+    $hash = password_hash($passU1, PASSWORD_DEFAULT);
 
-        $hash = password_hash($passU, PASSWORD_DEFAULT);
+    $ins = $cn->prepare("INSERT INTO usuarios_funcionarios (usuario, nombre, pass_hash, activo) VALUES (?, ?, ?, 1)");
+    $ins->bind_param("sss", $usuario, $nombreU, $hash);
 
-        $ins = $cn->prepare("INSERT INTO usuarios_funcionarios (usuario, nombre, pass_hash, activo) VALUES (?, ?, ?, 1)");
-        $ins->bind_param("sss", $usuario, $nombreU, $hash);
+    if ($ins->execute()) {
+        $ins->close();
+        header("Location: /inscripciones/vistas/funcionarios/crear_usuario.php?ok=1");
+        exit;
+    } else {
+        $ins->close();
+        header("Location: /inscripciones/vistas/funcionarios/crear_usuario.php?e=4");
+        exit;
+    }
 
-        if ($ins->execute()) {
-            $ins->close();
-            header("Location: /inscripciones/vistas/funcionarios/crear_usuario.php?e=3");
-            exit;
-        } else {
-            $ins->close();
-            header("Location: /inscripciones/vistas/funcionarios/crear_usuario.php?e=4");
-            exit;
-        }
-
+ 
 
     case 'logout':
         unset($_SESSION['FUNC_USER']);
