@@ -133,7 +133,7 @@ function realizar_Inscripcion(){
         await Swal.fire({
           icon: 'info',
           title: 'Ya inscrito',
-          html: resp.msg || 'Ya estás inscrito.',
+          html: resp.msg || 'El asociado ya se encuentra inscrito.',
           confirmButtonText: 'Salir',
           allowOutsideClick: false,
           allowEscapeKey: false

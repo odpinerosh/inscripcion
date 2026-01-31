@@ -82,7 +82,7 @@
 				exit;
 			}
 
-			// Consultar asociado (NO confiar en POST es_delegado/antiguedad)
+			// Consultar asociado y validar reglas
 			$aso = $asociados->consultar_Asociado($id_Asociado, $id_Evento);
 			if (!$aso) {
 				echo json_encode(['ok'=>false, 'msg'=>'Asociado no encontrado.']);
