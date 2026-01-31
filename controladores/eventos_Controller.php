@@ -18,7 +18,7 @@
 	switch ($accion) {
 
 		case '1': // Confirmar inscripción (JSON)
-			session_start();
+
 			header('Content-Type: application/json; charset=utf-8');
 
 			// Params
@@ -216,10 +216,6 @@
 			}
 
 			// Insertar inscripción
-			$fecha = date('Y-m-d H:i:s');
-			$rutaAdj = $esDelegado ? null : json_encode($rutas, JSON_UNESCAPED_SLASHES);
-
-			// Insertar inscripción (adaptable a firma del modelo)
 			$fecha = date('Y-m-d H:i:s');
 			$rutaAdj = $esDelegado ? null : json_encode($rutas, JSON_UNESCAPED_SLASHES);
 
