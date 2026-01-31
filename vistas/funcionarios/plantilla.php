@@ -2,7 +2,7 @@
 // /inscripciones/vistas/funcionarios/plantilla.php
 if (session_status() === PHP_SESSION_NONE) session_start();
 
-$nombre = $_SESSION['FUNC_USER']['nombre'] ?? '';
+$nombre  = $_SESSION['FUNC_USER']['nombre']  ?? '';
 $usuario = $_SESSION['FUNC_USER']['usuario'] ?? '';
 ?>
 <!doctype html>
@@ -11,33 +11,140 @@ $usuario = $_SESSION['FUNC_USER']['usuario'] ?? '';
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><?php echo htmlspecialchars($titulo ?? 'Módulo Interno'); ?></title>
+  <link href="/inscripciones/images/favicon_cooptraiss.png" rel="shortcut icon" type="image/vnd.microsoft.icon">
+
+  <!-- Bootstrap (si está disponible en tu proyecto) -->
+  <link rel="stylesheet" href="/inscripciones/assets/vendor/bootstrap/css/bootstrap.min.css">
+  <link rel="stylesheet" href="assets/vendor/bootstrap/css/bootstrap.min.css">
+
   <style>
-    body{font-family:Arial, sans-serif; margin:0; background:#f5f6f8;}
-    header{background:#0b2a4a; color:#fff; padding:12px 16px;}
-    main{padding:16px; max-width:900px; margin:0 auto;}
-    .card{background:#fff; border-radius:10px; padding:14px; box-shadow:0 2px 8px rgba(0,0,0,.06); margin-bottom:12px;}
-    .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between;}
-    .btn{display:inline-block; padding:10px 12px; border-radius:8px; text-decoration:none; background:#0b2a4a; color:#fff;}
-    .muted{color:#6b7280; font-size:12px;}
-    .warn{background:#fff7ed; border:1px solid #fed7aa;}
-    .warn b{color:#9a3412;}
+    :root{
+      --brand:#0b2a4a;
+      --brand-2:#08a750;
+      --bg:#f5f6f8;
+    }
+    body{ background:var(--bg); }
+    /* Fallbacks básicos si Bootstrap no carga (no estorban si sí carga) */
+    .card{
+      border-radius: .9rem;
+      box-shadow: 0 2px 10px rgba(0,0,0,.06);
+      border:1px solid rgba(15,23,42,.08);
+    }
+
+    /*
+      En algunas vistas el contenido se coloca directo dentro de .card (sin .card-body)
+      y se ve “pegado” al borde. Este padding mejora la legibilidad sin tocar la lógica.
+      Si una vista necesita tarjeta sin padding, puede agregar class="card card-no-pad".
+    */
+    .content-wrap .card{ padding: 1rem; }
+    @media (min-width: 768px){
+      .content-wrap .card{ padding: 1.25rem; }
+    }
+    .content-wrap .card.card-no-pad{ padding: 0; }
+
+    /* Si existe card-header/footer, que no queden “inflados” por el padding del card */
+    .content-wrap .card > .card-header{
+      margin: -1rem -1rem 1rem;
+      padding: .75rem 1rem;
+      border-top-left-radius: inherit;
+      border-top-right-radius: inherit;
+    }
+    .content-wrap .card > .card-footer{
+      margin: 1rem -1rem -1rem;
+      padding: .75rem 1rem;
+      border-bottom-left-radius: inherit;
+      border-bottom-right-radius: inherit;
+    }
+    @media (min-width: 768px){
+      .content-wrap .card > .card-header{ margin: -1.25rem -1.25rem 1.25rem; padding: .9rem 1.25rem; }
+      .content-wrap .card > .card-footer{ margin: 1.25rem -1.25rem -1.25rem; padding: .9rem 1.25rem; }
+    }
+    .btn{ border-radius: .75rem; }
+    .muted{ color:#6b7280; font-size:.875rem; }
+    .top-strip{ height: 10px; background: var(--brand-2); }
+    .app-header{ background: var(--brand); color:#fff; }
+    .app-header .brand-title{ font-weight: 800; letter-spacing: .2px; }
+    .app-header .user-meta{ color: rgba(255,255,255,.85); font-size: .9rem; }
+    .content-wrap{ padding: 1rem; }
+    @media (min-width: 992px){
+      .content-wrap{ padding: 1.5rem; }
+    }
+    .warn{
+      background: #fff7ed;
+      border-color: #fed7aa;
+    }
+    .warn b{ color:#9a3412; }
+    .btn-brand{
+      background: var(--brand);
+      border-color: var(--brand);
+      color:#fff;
+    }
+    .btn-brand:hover{ filter: brightness(.95); color:#fff; }
+    .btn-exit{
+      white-space: nowrap;
+    }
+
+    /*
+      Indicadores “verificado” a la derecha de inputs:
+      En algunas vistas se renderiza un span/botón verde sin ícono/texto (queda un cuadrito verde vacío).
+      Esto fuerza un estilo consistente y, con el JS de abajo, se inyecta un ✓ si viene vacío.
+    */
+    .input-group-text.bg-success,
+    .input-group-text.text-bg-success{
+      color:#fff;
+      font-weight:700;
+      min-width: 2.5rem;
+      justify-content: center;
+    }
   </style>
 </head>
 <body>
-  <header>
-    <div class="row">
-      <div>
-        <div style="font-weight:700;">Inscripciones Delegados — Uso interno</div>
-        <div class="muted">Funcionario: <?php echo htmlspecialchars($nombre); ?> (<?php echo htmlspecialchars($usuario); ?>)</div>
-      </div>
-      <div>
-        <a class="btn" href="/inscripciones/controladores/funcionarios_Controller.php?accion=logout">Salir</a>
+  <div class="top-strip"></div>
+
+  <header class="app-header">
+    <div class="container-fluid py-3">
+      <div class="d-flex flex-column flex-md-row align-items-start align-items-md-center justify-content-between gap-3">
+        <div>
+          <div class="brand-title">Inscripciones Delegados — Uso interno</div>
+          <div class="user-meta">
+            Funcionario: <?php echo htmlspecialchars($nombre); ?>
+            <?php if ($usuario !== ''): ?>(<?php echo htmlspecialchars($usuario); ?>)<?php endif; ?>
+          </div>
+        </div>
+
+        <div class="d-flex flex-column flex-sm-row gap-2">
+          <a class="btn btn-outline-light btn-exit" href="/inscripciones/controladores/funcionarios_Controller.php?accion=logout">Salir</a>
+        </div>
       </div>
     </div>
   </header>
 
-  <main>
-    <?php echo $contenido ?? ''; ?>
+  <main class="content-wrap">
+    <div class="container" style="max-width: 980px;">
+      <?php echo $contenido ?? ''; ?>
+    </div>
   </main>
+
+  <!-- Bootstrap JS (opcional) -->
+  <script src="/inscripciones/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    // Si llega un “cuadrito verde” (btn/span) sin ícono, ponemos un check.
+    document.addEventListener('DOMContentLoaded', function(){
+      var candidates = document.querySelectorAll(
+        '.input-group-text.bg-success, .input-group-text.text-bg-success, .btn.btn-success'
+      );
+      candidates.forEach(function(el){
+        var hasIcon = el.querySelector('i,svg,img');
+        var text = (el.textContent || '').trim();
+        if (!hasIcon && text === '') {
+          el.textContent = '✓';
+          el.setAttribute('aria-label','Verificado');
+          el.setAttribute('title','Verificado');
+        }
+      });
+    });
+  </script>
 </body>
 </html>
