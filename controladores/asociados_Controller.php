@@ -148,9 +148,7 @@
 							<div class='alert alert-danger' role='alert'>
 								<b>⛔ No habilitado para inscripción</b>
 								<p>Motivo: <b>Asociado inhábil por mora</b>.</p>
-								<div style='margin-top:6px;'>
-									Acción sugerida: verificar con <b>Cartera</b> antes de continuar.
-								</div>
+								
 							</div><br>
 							<div class='form-group' style='text-align:center'>
 								<button type='button' class='btn btn-secondary' onclick='{$salirOnClick}'>Salir</button>
