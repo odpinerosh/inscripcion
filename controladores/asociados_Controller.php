@@ -287,14 +287,13 @@
 					echo "
 					<div class='alert alert-primary' role='alert'>
 						El documento <b>{$idTxt}</b> ya se encuentra inscrito.<p>
-						".($insTxt !== '' ? " Registrado en <b>{$insTxt}</b>.</p>" : "")."
+						".($insTxt !== '' ? "<small>Registrado en <b>{$insTxt}</b>.</small></p>" : "")."
 					</div>
 
 					<div class='form-group' style='text-align:center; margin-top:20px'>
 						{$btnSalir}
 					</div>
 					";
-
 				}
 			}
 				
