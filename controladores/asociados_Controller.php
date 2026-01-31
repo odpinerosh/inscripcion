@@ -253,28 +253,28 @@
 						}
 					}
 
+					// Puede inscribirse si NO está inhábil, NO fue empleado, y (es delegado || cumple antigüedad >= 5)
+					// OJO: horas < 80 NO bloquea (solo exige certificado físico)
+					$puedeInscribir = ($inhabil != 1) && ($empleado != 1) && ( ($esDelegado == 1) || ((float)$antiguedad >= 5) );
 
-					$disabled = ($esDelegado === 1) ? "" : "disabled";
+					$disabled = $puedeInscribir ? "" : "disabled";
+					$canVal   = $puedeInscribir ? "1" : "0";
 
 					$html .= "
+					<input type='hidden' id='can_inscribir' value='{$canVal}'>
+
 					<div class='alert alert-danger' role='alert' id='errores' style='display:none'>
-						<h5>Debes corregir:</h5>
+					<h5>Debes corregir:</h5>
 					</div>
 
-					<div id='div_Enviar' class='form-group' style='text-align:center; margin-top:20px'>
-						<input class='btn btn-success' type='button' name='enviar' id='enviar'
-							value='Confirmar inscripción'
-							style='font-size: large; font-weight:bold'
-							onclick='validar_Formulario()' ".$disabled.">
-					</div>
-					<div class='form-group' style='text-align:center; margin-top:10px'>
-						{$btnSalir}
-					</div>
-					<div id='div_Loading' class='form-group' style='text-align:center; display:none; margin-top:10px'>
-						<label>Se está procesando la solicitud, por favor espere.</label>
-						<img src='images/loading.gif' style='max-width: 240px;'>
+					<div id='div_Enviar' class='form-group' style='text-align:center'>
+					<input class='btn btn-success' type='button' name='enviar2' id='enviar2'
+						value='Confirmar inscripción'
+						style='font-size: large; font-weight:bold'
+						onclick='validar_Formulario()' {$disabled}>
 					</div>
 					";
+
 
 					echo $html;
 

@@ -3,6 +3,20 @@ $(document).on('submit', '#inscripcion', function(e){
   return false;
 });
 
+function syncConfirmButtons() {
+  var can = ($('#can_inscribir').val() || '0') === '1';
+
+  // Botón CONFIRMAR superior (gris)
+  if ($('#enviar').length) {
+    $('#enviar').prop('disabled', !can);
+  }
+
+  // Botón CONFIRMAR inferior (verde)
+  if ($('#enviar2').length) {
+    $('#enviar2').prop('disabled', !can);
+  }
+}
+
 
 function mostrar_Agencias(){
   var urldat = (window.INS_BASE || "") + "/controladores/asociados_Controller.php?accion=2";
@@ -30,7 +44,7 @@ function enviar_Documento(){
       $('#div_Datos').empty();
       $('#div_Alertas').empty();
       $('#div_Datos').html(data);
-
+      syncConfirmButtons();
       // En funcionarios habilitar 
       toggleBtnInscribir();
     }
@@ -50,10 +64,17 @@ function validar_Documento(){
 
 // En funcionarios: confirmar y enviar (SIN validar adjuntos)
 async function validar_Formulario(){
+
+  var can = ($('#can_inscribir').val() || '0') === '1';
+  if (!can) {
+    Swal.fire({ icon:'warning', title:'No habilitado', text:'Este asociado no cumple los requisitos para inscribirse.' });
+    return;
+  }
+
   const r = await Swal.fire({
     icon: 'question',
     title: 'Confirmar inscripción',
-    text: '¿Está seguro de confirmar su inscripción?',
+    text: '¿Está seguro de confirmar la inscripción?',
     showCancelButton: true,
     confirmButtonText: 'Sí, confirmar',
     cancelButtonText: 'No, cancelar'
