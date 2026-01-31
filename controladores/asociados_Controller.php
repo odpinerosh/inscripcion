@@ -45,9 +45,12 @@
 			$id_Asociado = $_GET['id_Asociado'] ?? '';
 			$id_Evento   = $_GET['id_Evento'] ?? 'INSCRIPCIÓN DELEGADOS 2026';
 
-			$salirOnClick = (!empty($_SESSION['FUNC_USER']))
-			    ? "window.location.href='/inscripciones/vistas/funcionarios/index.php'"
-    			: "reiniciar_Inscripcion()";
+			$btnSalir = "<button type='button' class='btn btn-secondary' onclick='reiniciar_Inscripcion()'>Salir</button>";
+
+			if (!empty($_SESSION['FUNC_USER'])) {
+				$btnSalir = "<a class='btn btn-secondary' href='/inscripciones/vistas/funcionarios/index.php'>Salir</a>";
+			}
+
 
 			// Validar sesión OTP
 			list($okSess, $msgSess) = requireOtpSession($id_Asociado, $id_Evento);
@@ -150,9 +153,10 @@
 								<p>Motivo: <b>Asociado inhábil por mora</b>.</p>
 								
 							</div><br>
-							<div class='form-group' style='text-align:center'>
-								<button type='button' class='btn btn-secondary' onclick='{$salirOnClick}'>Salir</button>
-							</div>";
+							<div class='form-group' style='text-align:center; margin-top:20px'>
+								{$btnSalir}
+							</div>
+							";
 							echo $html; exit;
 						}
 
@@ -162,9 +166,10 @@
 								<b>⛔ No habilitado para inscripción</b>
 								<p>Motivo: <b>Fue empleado de confianza</b> en los últimos tres años.</p>							
 							</div><br>
-							<div class='form-group' style='text-align:center'>
-								<button type='button' class='btn btn-secondary' onclick='r{$salirOnClick}'>Salir</button>
-							</div>";
+							<div class='form-group' style='text-align:center; margin-top:20px'>
+								{$btnSalir}
+							</div>
+							";
 							echo $html; exit;
 						}
 
@@ -175,9 +180,10 @@
 								<b>⛔ No habilitado para inscripción</b>
 								<p>Motivo: No cumple la antigüedad mínima de <b>5 años</b>. (Antigüedad actual: {$antiguedadTxt} años)</p>
 							</div><br>
-							<div class='form-group' style='text-align:center'>
-								<button type='button' class='btn btn-secondary' onclick='reiniciar_Inscripcion()'>Salir</button>
-							</div>";
+							<div class='form-group' style='text-align:center; margin-top:20px'>
+								{$btnSalir}
+							</div>
+							";
 							echo $html; exit;
 						}
 					}
@@ -255,17 +261,16 @@
 						<h5>Debes corregir:</h5>
 					</div>
 
-					<div id='div_Enviar' class='form-group' style='text-align:center'>
+					<div id='div_Enviar' class='form-group' style='text-align:center; margin-top:20px'>
 						<input class='btn btn-success' type='button' name='enviar' id='enviar'
 							value='Confirmar inscripción'
 							style='font-size: large; font-weight:bold'
 							onclick='validar_Formulario()' ".$disabled.">
 					</div>
-					<div class='form-group' style='text-align:center'>
-    					<button type='button' class='btn btn-secondary' onclick='reiniciar_Inscripcion()'>Salir</button>
-  					</div>
-
-					<div id='div_Loading' class='form-group' style='text-align:center; display:none'>
+					<div class='form-group' style='text-align:center; margin-top:10px'>
+						{$btnSalir}
+					</div>
+					<div id='div_Loading' class='form-group' style='text-align:center; display:none; margin-top:10px'>
 						<label>Se está procesando la solicitud, por favor espere.</label>
 						<img src='images/loading.gif' style='max-width: 240px;'>
 					</div>
@@ -281,14 +286,15 @@
 
 					echo "
 					<div class='alert alert-primary' role='alert'>
-						El documento <b>{$idTxt}</b> ya se encuentra inscrito al evento.
-						".($insTxt !== '' ? " Registrado en <b>{$insTxt}</b>." : "")."
+						El documento <b>{$idTxt}</b> ya se encuentra inscrito.<p>
+						".($insTxt !== '' ? " Registrado en <b>{$insTxt}</b>.</p>" : "")."
 					</div>
 
-					<div class='form-group' style='text-align:center'>
-						<button type='button' class='btn btn-secondary' onclick='window.location.reload()'>Salir</button>
+					<div class='form-group' style='text-align:center; margin-top:20px'>
+						{$btnSalir}
 					</div>
 					";
+
 				}
 			}
 				
