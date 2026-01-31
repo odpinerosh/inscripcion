@@ -114,8 +114,14 @@ function cancelar_Subida(){
 
 function realizar_Inscripcion(){
   var evento = $('#evento').val();
-  $('#div_Loading').show(300);
-  $('html, body').animate({ scrollTop: $("#div_Loading").offset().top }, 500);
+  var $loading = $('#div_Loading');
+  $loading.show(300);
+  // Desplazar vista al loading
+  var off = $loading.offset();
+  if (off && typeof off.top !== 'undefined') {
+    $('html, body').animate({ scrollTop: off.top }, 500);
+  }
+
   $('#div_Validar').hide();
   $('#div_Enviar').hide();
 
