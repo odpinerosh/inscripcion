@@ -142,7 +142,7 @@
 						";
 					} else {
 
-						// Bloqueos duros
+						// Bloqueos duros 
 						if ($inhabil === 1) {
 							$html .= "
 							<div class='alert alert-danger' role='alert'>
@@ -161,10 +161,11 @@
 						if ($empleado === 1) {
 							$html .= "
 							<div class='alert alert-danger' role='alert'>
-								No puedes inscribirte: fuiste <b>empleado de confianza</b> en los últimos tres (3) años.
+								<b>⛔ No habilitado para inscripción</b><br>
+								Motivo: <b>Fue empleado de confianza</b> en los últimos tres años.							
 							</div>
 							<div class='form-group' style='text-align:center'>
-								<button type='button' class='btn btn-secondary' onclick='reiniciar_Inscripcion()'>Salir</button>
+								<button type='button' class='btn btn-secondary' onclick='r{$salirOnClick}'>Salir</button>
 							</div>";
 							echo $html; exit;
 						}
