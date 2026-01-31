@@ -16,6 +16,7 @@ $usuario = $_SESSION['FUNC_USER']['usuario'] ?? '';
   <!-- Bootstrap (si está disponible en tu proyecto) -->
   <link rel="stylesheet" href="/inscripciones/assets/vendor/bootstrap/css/bootstrap.min.css">
   <link rel="stylesheet" href="assets/vendor/bootstrap/css/bootstrap.min.css">
+  
 
   <style>
     :root{
@@ -128,9 +129,10 @@ $usuario = $_SESSION['FUNC_USER']['usuario'] ?? '';
   <!-- Bootstrap JS (opcional) -->
   <script src="/inscripciones/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
   <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
   <script>
-    // Si llega un “cuadrito verde” (btn/span) sin ícono, ponemos un check.
+    // Inyectar ✓ en indicadores “verificado” vacíos 
     document.addEventListener('DOMContentLoaded', function(){
       var candidates = document.querySelectorAll(
         '.input-group-text.bg-success, .input-group-text.text-bg-success, .btn.btn-success'

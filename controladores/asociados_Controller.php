@@ -137,56 +137,51 @@
 					<br>
 					";
 
+					// Mensaje informativo si ya es delegado
 					if ($esDelegado === 1) {
-						$html .= "
-							<div class='alert alert-info' role='alert'>
-								Ya eres delegado actualmente. Puedes confirmar tu inscripción.
-							</div>
-						";
+					$html .= "
+						<div class='alert alert-info' role='alert'>
+						Ya eres delegado actualmente. Puedes confirmar tu inscripción.
+						</div>
+					";
 					} else {
 
-						// Bloqueos duros 
-						if ($inhabil === 1) {
-							$html .= "
-							<div class='alert alert-danger' role='alert'>
-								<b>⛔ No habilitado para inscripción</b>
-								<p>Motivo: <b>Asociado inhábil por mora</b>.</p>
-								
-							</div><br>
-							<div class='form-group' style='text-align:center; margin-top:20px'>
-								{$btnSalir}
-							</div>
-							";
-							echo $html; exit;
+						// === Bloqueos duros (acumulados) SOLO para NO delegados ===
+						$razones = [];
+
+						if ((int)$inhabil === 1) {
+							$razones[] = "Asociado inhábil por mora.";
 						}
 
-						if ($empleado === 1) {
-							$html .= "
-							<div class='alert alert-danger' role='alert'>
-								<b>⛔ No habilitado para inscripción</b>
-								<p>Motivo: <b>Fue empleado de confianza</b> en los últimos tres años.</p>							
-							</div><br>
-							<div class='form-group' style='text-align:center; margin-top:20px'>
-								{$btnSalir}
-							</div>
-							";
-							echo $html; exit;
+						if ((int)$empleado === 1) {
+							$razones[] = "Fue empleado de confianza en los últimos tres años.";
 						}
 
-						if ($antiguedad < 5.0) {
-							$antiguedadTxt = number_format($antiguedad, 1, '.', '');
+						if ((float)$antiguedad < 5.0) {
+							$antiguedadTxt = number_format((float)$antiguedad, 1, '.', '');
+							$razones[] = "No cumple la antigüedad mínima de 5 años (antigüedad actual: {$antiguedadTxt} años).";
+						}
+
+						if (count($razones) > 0) {
+							$items = "";
+							foreach ($razones as $r) { $items .= "<li>{$r}</li>"; }
+
 							$html .= "
 							<div class='alert alert-danger' role='alert'>
 								<b>⛔ No habilitado para inscripción</b>
-								<p>Motivo: No cumple la antigüedad mínima de <b>5 años</b>. (Antigüedad actual: {$antiguedadTxt} años)</p>
+								<p>Se identificaron las siguientes razones:</p>
+								<ul style='margin:8px 0 0 18px;'>{$items}</ul>
 							</div><br>
 							<div class='form-group' style='text-align:center; margin-top:20px'>
 								{$btnSalir}
 							</div>
 							";
-							echo $html; exit;
+							echo $html; 
+							exit;
 						}
 					}
+
+
 					// Pasa reglas → en asociados pide PDF, en funcionarios es físico
 					$html .= "<hr>";
 
@@ -255,7 +250,12 @@
 
 					// Puede inscribirse si NO está inhábil, NO fue empleado, y (es delegado || cumple antigüedad >= 5)
 					// OJO: horas < 80 NO bloquea (solo exige certificado físico)
-					$puedeInscribir = ($inhabil != 1) && ($empleado != 1) && ( ($esDelegado == 1) || ((float)$antiguedad >= 5) );
+					$puedeInscribir = ($esDelegado == 1) || (
+						($inhabil != 1) &&
+						($empleado != 1) &&
+						((float)$antiguedad >= 5)
+					);
+
 
 					$disabled = $puedeInscribir ? "" : "disabled";
 					$canVal   = $puedeInscribir ? "1" : "0";
