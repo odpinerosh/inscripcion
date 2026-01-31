@@ -81,10 +81,9 @@ function realizar_Inscripcion(){
   $('html, body').animate({ scrollTop: $("#div_Loading").offset().top }, 500);
   $('#div_Validar').hide();
   $('#div_Enviar').hide();
-
-  //var urldat = "controladores/eventos_Controller.php?accion=1&id_Evento=" + encodeURIComponent(evento);
+  $('#enviar').prop('disabled', true);
+  
   var urldat = (window.INS_BASE || "") + "/controladores/eventos_Controller.php?accion=1";
-
 
   var fd = new FormData(document.getElementById('inscripcion'));
 
