@@ -45,6 +45,9 @@
 			$id_Asociado = $_GET['id_Asociado'] ?? '';
 			$id_Evento   = $_GET['id_Evento'] ?? 'INSCRIPCIÓN DELEGADOS 2026';
 
+			$salirOnClick = (!empty($_SESSION['FUNC_USER']))
+			    ? "window.location.href='/inscripciones/vistas/funcionarios/index.php'"
+    			: "reiniciar_Inscripcion()";
 
 			// Validar sesión OTP
 			list($okSess, $msgSess) = requireOtpSession($id_Asociado, $id_Evento);
@@ -143,10 +146,14 @@
 						if ($inhabil === 1) {
 							$html .= "
 							<div class='alert alert-danger' role='alert'>
-								No puedes inscribirte: actualmente estás <b>inhábil por mora</b>.
+								<b>⛔ No habilitado para inscripción</b><br>
+								Motivo: <b>Asociado inhábil por mora</b>.
+								<div style='margin-top:6px;'>
+									Acción sugerida: verificar con <b>Cartera</b> antes de continuar.
+								</div>
 							</div>
 							<div class='form-group' style='text-align:center'>
-								<button type='button' class='btn btn-secondary' onclick='reiniciar_Inscripcion()'>Salir</button>
+								<button type='button' class='btn btn-secondary' onclick='{$salirOnClick}'>Salir</button>
 							</div>";
 							echo $html; exit;
 						}
