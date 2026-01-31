@@ -1,7 +1,13 @@
 <?php 
-	session_start();
+	require_once("../config/session.php");
+
+	if (session_status() === PHP_SESSION_NONE) {
+		session_start();
+	}
+
 	//conexión a base de datos
 	require_once("../config/conecta.php");
+	
 	//Llamada al modelo
 	require_once("../modelos/asociados_Model.php");
 	require_once("../modelos/eventos_Model.php");
@@ -9,7 +15,7 @@
 	// Función para validar sesión OTP
 	function requireOtpSession($aso, $even) {
 
-		// Si es funcionario interno, no aplica OTP
+		// Funcionarios internos: NO requiere OTP
 		if (!empty($_SESSION['FUNC_USER'])) {
 			return [true, ""];
 		}
@@ -17,15 +23,17 @@
 		if (empty($_SESSION['otp_ok']) || empty($_SESSION['otp_expires'])) {
 			return [false, "Debes validar tu acceso con el código enviado a tu correo antes de continuar."];
 		}
+
 		if (time() > (int)$_SESSION['otp_expires']) {
-			// expirada: limpiar
-			$_SESSION = [];
-			if (session_status() === PHP_SESSION_ACTIVE) session_destroy();
+			// expirada: limpiar sesión OTP (sin tumbar otras)
+			unset($_SESSION['otp_ok'], $_SESSION['otp_aso'], $_SESSION['otp_even'], $_SESSION['otp_expires']);
 			return [false, "Tu sesión venció. Solicita un nuevo código e inténtalo de nuevo."];
 		}
+
 		if ((string)($_SESSION['otp_aso'] ?? '') !== (string)$aso || (string)($_SESSION['otp_even'] ?? '') !== (string)$even) {
 			return [false, "Sesión inválida para este documento/evento."];
 		}
+
 		return [true, ""];
 	}
 

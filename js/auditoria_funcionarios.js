@@ -20,11 +20,8 @@ function mostrar_Agencias(){
 }
 
 function enviar_Documento(){
-
   var documento = $('#documento').val();
-  //var urldat="/inscripciones/controladores/asociados_Controller.php?accion=1&id_Asociado="+documento+"&id_Evento="+evento;
-  var urldat = (window.INS_BASE || "") + "/controladores/asociados_Controller.php?accion=1&id_Asociado=" + documento + "&id_Evento=" + evento;
-
+  var urldat = (window.INS_BASE || "") + "/controladores/asociados_Controller.php?accion=1&id_Asociado=" + encodeURIComponent(documento);
 
   $.ajax({
     type: "GET",
@@ -34,11 +31,12 @@ function enviar_Documento(){
       $('#div_Alertas').empty();
       $('#div_Datos').html(data);
 
-      // En funcionarios NO validamos PDFs => habilitar siempre
+      // En funcionarios habilitar 
       toggleBtnInscribir();
     }
   });
 }
+
 
 // En funcionarios: sin OTP, entra directo
 function validar_Documento(){
@@ -136,7 +134,7 @@ function realizar_Inscripcion(){
         await Swal.fire({
           icon: 'info',
           title: 'Ya inscrito',
-          html: resp.msg || 'Ya estás inscrito en este evento.',
+          html: resp.msg || 'Ya estás inscrito.',
           confirmButtonText: 'Salir',
           allowOutsideClick: false,
           allowEscapeKey: false

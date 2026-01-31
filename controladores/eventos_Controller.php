@@ -1,11 +1,17 @@
 <?php 
-	require_once("../config/conecta.php");
 	require_once("../config/session.php");
+
+	if (session_status() === PHP_SESSION_NONE) {
+		session_start();
+	}
+
+	require_once("../config/conecta.php");
 	require_once("../modelos/eventos_Model.php");
 	require_once("../modelos/asociados_Model.php");
+
 	date_default_timezone_set("America/Bogota");
+
 	//Llamada al modelo
-	//require_once("../modelos/citas_Model.php");
 
 	$accion = $_GET['accion'];
 
