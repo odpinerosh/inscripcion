@@ -46,7 +46,7 @@ function enviar_Documento(){
       $('#div_Datos').html(data);
       syncConfirmButtons();
       // En funcionarios habilitar 
-      toggleBtnInscribir();
+      //toggleBtnInscribir();
     }
   });
 }
