@@ -21,6 +21,52 @@
 
 			header('Content-Type: application/json; charset=utf-8');
 
+			// Auditoría de inscripción
+			$isFunc   = !empty($_SESSION['FUNC_USER']['usuario']);
+			$funcUser = (string)($_SESSION['FUNC_USER']['usuario'] ?? '');
+
+			if (!function_exists('auditar_inscripcion_func')) {
+				function auditar_inscripcion_func($usuario, $documento, $evento, $resultado, $motivo, $reqCert, $horas) {
+					try {
+						$cn = Conectar::conexion();
+						if (!$cn) return;
+
+						$ip = $_SERVER['REMOTE_ADDR'] ?? '';
+						$ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
+
+						$sql = "INSERT INTO ins_auditoria
+								(aud_usuario, aud_documento, aud_evento, aud_resultado, aud_motivo, aud_ip, aud_user_agent, aud_req_cert, aud_horas)
+								VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+
+						$stmt = $cn->prepare($sql);
+						if (!$stmt) return;
+
+						$usuario   = (string)$usuario;
+						$documento = (string)$documento;
+						$evento    = (string)$evento;
+						$resultado = (string)$resultado;
+						$motivo    = (string)$motivo;
+
+						$reqCertInt = $reqCert ? 1 : 0;
+						$horasNum   = is_null($horas) ? null : (float)$horas;
+
+						// 7 strings + 1 int + 1 double => "sssssssid"
+						$stmt->bind_param(
+							"sssssssid",
+							$usuario, $documento, $evento, $resultado, $motivo, $ip, $ua, $reqCertInt, $horasNum
+						);
+
+						$stmt->execute();
+						$stmt->close();
+						$cn->close();
+					} catch (Throwable $e) {
+						// Silencioso: jamás debe romper el flujo principal
+					}
+				}
+			}
+
+
+
 			// Params
 			$id_Evento   = $_POST['id_Evento'] ?? ($_POST['evento'] ?? ($_GET['id_Evento'] ?? ''));
 			$id_Asociado = $_POST['id_Asociado'] ?? ($_POST['identificacion'] ?? ($_POST['documento'] ?? ''));
@@ -74,6 +120,11 @@
 			$existe = $eventos->validar_Inscripcion($id_Asociado, $id_Evento);
 			if ($existe) {
 				$f = $existe['ins_Fecha'] ?? '';
+				// Auditoría
+				if ($isFunc) {
+					auditar_inscripcion_func($funcUser, $id_Asociado, $id_Evento, "YA_INSCRITO", "Ya inscrito", 0, null);
+				}
+				// Respuesta
 				echo json_encode([
 					'ok'=>false,
 					'code'=>'YA_INSCRITO',
@@ -85,6 +136,10 @@
 			// Consultar asociado y validar reglas
 			$aso = $asociados->consultar_Asociado($id_Asociado, $id_Evento);
 			if (!$aso) {
+				// Auditoría
+				if ($isFunc) {
+					auditar_inscripcion_func($funcUser, $id_Asociado, $id_Evento, "NO_ENCONTRADO", "Asociado no encontrado", 0, null);
+				}				
 				echo json_encode(['ok'=>false, 'msg'=>'Asociado no encontrado.']);
 				exit;
 			}
@@ -99,15 +154,30 @@
 			// Reglas servidor
 			if (!$esDelegado) {
 				if ($inhabil) {
+					// Auditoría
+					if ($isFunc) {
+						auditar_inscripcion_func($funcUser, $id_Asociado, $id_Evento, "BLOQUEADO", "INHABIL_MORA", (int)$requiereCert === 1, $horas);
+					}
+					// Respuesta
 					echo json_encode(['ok'=>false, 'code'=>'INHABIL_MORA', 'msg'=>'No puedes inscribirte: actualmente estás inhábil por mora.']);
 					exit;
 				}
 				if ($empleado) {
+					// Auditoría
+					if ($isFunc) {
+						auditar_inscripcion_func($funcUser, $id_Asociado, $id_Evento, "BLOQUEADO", "EX_EMPLEADO_CONFIANZA", (int)$requiereCert === 1, $horas);
+					}
+					// Respuesta
 					echo json_encode(['ok'=>false, 'code'=>'EX_EMPLEADO_CONFIANZA', 'msg'=>'No puedes inscribirte: fuiste empleado de confianza en los últimos tres (3) años.']);
 					exit;
 				}
 				if ($antiguedad < 5.0) {
 					$antTxt = number_format($antiguedad, 1, '.', '');
+					// Auditoría
+					if ($isFunc) {
+						auditar_inscripcion_func($funcUser, $id_Asociado, $id_Evento, "BLOQUEADO", "ANTIGUEDAD_INSUFICIENTE", (int)$requiereCert === 1, $horas);
+					}
+					// Respuesta
 					echo json_encode(['ok'=>false, 'code'=>'ANTIGUEDAD_INSUFICIENTE', 'msg'=>"No cumples la antigüedad mínima de 5 años. (Antigüedad actual: $antTxt años)"]);
 					exit;
 				}
@@ -240,8 +310,13 @@
 			}
 
 			if (!$ok) {
-			echo json_encode(['ok'=>false, 'msg'=>'No fue posible registrar la inscripción.']);
-			exit;
+				// Auditoría
+				if ($isFunc) {
+					auditar_inscripcion_func($funcUser, $id_Asociado, $id_Evento, "ERROR", "No fue posible registrar la inscripción", (int)$requiereCert === 1, $horas);
+				}
+				// Respuesta
+				echo json_encode(['ok'=>false, 'msg'=>'No fue posible registrar la inscripción.']);
+				exit;
 			}
 
 
@@ -251,7 +326,7 @@
 				$sent = $eventos->mail_ConfirmacionInscripcion($correo, $id_Asociado, $fecha);
 			}
 
-			// Cerrar SOLO la sesión OTP después de inscribir (no tumbar sesión de funcionario)
+			// Cerrar SOLO la sesión OTP después de inscribir 
 			if (empty($_SESSION['FUNC_USER'])) {
 				$_SESSION = [];
 				session_destroy();
@@ -259,14 +334,24 @@
 				unset($_SESSION['otp_ok'], $_SESSION['otp_aso'], $_SESSION['otp_even'], $_SESSION['otp_expires']);
 			}
 
+			// Si no se envió el correo, avisar pero considerar OK
 			if (!$sent) {
+				// Auditoría correo fallido
+				if ($isFunc) {
+					auditar_inscripcion_func($funcUser, $id_Asociado, $id_Evento, "CORREO_FALLIDO", "Inscripción registrada pero fallo envío de correo", (int)$requiereCert === 1, $horas);
+				}
+				// Respuesta con aviso de correo fallido
 				echo json_encode([
 					'ok'=>true,
 					'msg'=>'Inscripción registrada, pero no fue posible enviar el correo de confirmación.'
 				]);
 				exit;
 			}
-
+			// Auditoría exitosa
+			if ($isFunc) {
+				auditar_inscripcion_func($funcUser, $id_Asociado, $id_Evento, "OK", "Inscripción confirmada", (int)$requiereCert === 1, $horas);
+			}
+			// Respuesta exitosa
 			echo json_encode(['ok'=>true, 'msg'=>'Inscripción confirmada.']);
 		exit;
 

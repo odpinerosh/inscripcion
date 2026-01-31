@@ -2,11 +2,12 @@
 if (session_status() === PHP_SESSION_NONE) session_start();
 
 // Si ya está logueado, lo mandamos al módulo
-if (!empty($_SESSION['FUNC_USER'])) {
+if (!empty($_SESSION['FUNC_USER']['usuario'])) {
   header("Location: /inscripciones/vistas/funcionarios/index.php");
   exit;
 }
 
+// Manejo de mensajes de error
 $e = $_GET['e'] ?? '';
 $mensaje = '';
 if ($e === '1') $mensaje = 'Usuario o contraseña inválidos.';
