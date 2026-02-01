@@ -55,7 +55,7 @@
 			// Validar sesión OTP
 			list($okSess, $msgSess) = requireOtpSession($id_Asociado, $id_Evento);
 			if (!$okSess) {
-			echo "<div class='alert alert-danger' role='alert'>{$msgSess}</div>";
+				echo "<div class='alert alert-danger' role='alert'>{$msgSess}</div>";
 			exit;
 			}
 
@@ -141,7 +141,7 @@
 					if ($esDelegado === 1) {
 					$html .= "
 						<div class='alert alert-info' role='alert'>
-						Ya eres delegado actualmente. Puedes confirmar tu inscripción.
+							Ya eres delegado actualmente. Puedes confirmar tu inscripción.
 						</div>
 					";
 					} else {
@@ -272,6 +272,9 @@
 						value='Confirmar inscripción'
 						style='font-size: large; font-weight:bold'
 						onclick='validar_Formulario()' {$disabled}>
+					</div>
+					<div class='form-group' style='text-align:center; margin-top:20px'>
+						{$btnSalir}
 					</div>
 					";
 
@@ -452,10 +455,10 @@
 			}
 
 
-			// sesión aprobada (con expiración)
+			// sesión aprobada 
 			$OTP_SESSION_TTL_MIN = 20; // configurable: vigencia de la sesión (ej. 20 min)
 
-			session_regenerate_id(true); // evita session fixation
+			session_regenerate_id(true); 
 
 			$_SESSION['otp_ok']      = true;
 			$_SESSION['otp_aso']     = (string)$id_Asociado;
@@ -463,8 +466,7 @@
 			$_SESSION['otp_time']    = time();
 			$_SESSION['otp_expires'] = time() + ($OTP_SESSION_TTL_MIN * 60);
 
-			// (Opcional) amarrar a user-agent (útil, pero puede molestar si cambian de navegador)
-			// $_SESSION['otp_ua'] = substr($_SERVER['HTTP_USER_AGENT'] ?? '', 0, 200);
+			// (Opcional) amarrar a user-agent 
 
 			echo json_encode([
 			"ok" => true,
