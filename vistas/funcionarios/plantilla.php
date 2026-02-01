@@ -11,7 +11,7 @@ $usuario = $_SESSION['FUNC_USER']['usuario'] ?? '';
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><?php echo htmlspecialchars($titulo ?? 'Módulo Interno'); ?></title>
-  <link href="/inscripciones/images/favicon_cooptraiss.png" rel="shortcut icon" type="image/vnd.microsoft.icon">
+  <link href="/inscripciones/images/favicon.ico" rel="shortcut icon" type="image/vnd.microsoft.icon">
 
   <!-- Bootstrap (si está disponible en tu proyecto) -->
   <link rel="stylesheet" href="/inscripciones/assets/vendor/bootstrap/css/bootstrap.min.css">

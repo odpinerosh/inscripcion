@@ -6,7 +6,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <title>Inscripción</title>
-    <link href="images/favicon_cooptraiss.png" rel="shortcut icon" type="image/vnd.microsoft.icon">
+    <link href="images/favicon.ico" rel="shortcut icon" type="image/vnd.microsoft.icon">
     <!-- Bootstrap CSS -->
     <link rel="stylesheet" href="assets/vendor/bootstrap/css/bootstrap.min.css">
     <!--link rel="stylesheet" href="css/boton_Iniciar.css"-->

@@ -182,6 +182,7 @@ date_default_timezone_set("America/Bogota");
 
 					<div style='padding:12px 14px; background:#fff7ed; border:1px solid #fed7aa; border-radius:10px;'>
 						<b>Importante:</b> Tu registro será verificado por la <b>Comisión Central Electoral de Escrutinios</b>.
+						<p><b>Las listas de los delegados inscritos se publicarán el 9 de febrero de 2026</b>.</p>
 					</div>
 
 					<p style='margin:16px 0 0 0; font-size:13px; color:#374151;'>
