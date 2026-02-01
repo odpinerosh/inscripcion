@@ -103,7 +103,7 @@
 
                     <!-- Paso 2: pedir correo (se muestra después de Enter en documento) -->
                     <div id='div_CorreoLogin' class='form-group' style='display:none'>
-                        <h5>Correo electrónico</h5>
+                        <h5>Correo electrónico registrado en Cooptraiss</h5>
                         <span class='input-group-prepend'>
                             <input type='text' name='correo_login' class='form-control' placeholder='Ingrese su correo' id='correo_login' autocapitalize='none' autocomplete='off'></input>
                             <span class='input-group-text' style ='background-color:#08a750;color:#fff101'><i class='fas fa-at'></i></span>
