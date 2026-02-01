@@ -61,6 +61,26 @@ $contenido .= '
       </div>
     </form>
   </div>
+  <div class="card" style="margin-top:14px;">
+    <h3 style="margin:0 0 10px 0;">Importación masiva (CSV)</h3>
+    <div class="muted" style="margin-bottom:10px;">
+      Formato por línea: <b>usuario,nombre,password</b><br>
+      Si <b>password</b> se deja vacío, el sistema genera una temporal.
+    </div>
+
+    <form method="POST" action="/inscripciones/controladores/funcionarios_Controller.php?accion=importar_usuarios" autocomplete="off">
+      <textarea name="csv" rows="10" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px;"
+        placeholder="aux1,Auxiliar 1,Clave123 
+        aux2,Auxiliar 2,
+        aux3,Auxiliar 3,OtraClave">
+      </textarea>
+
+      <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+        <button class="btn" type="submit">Importar usuarios</button>
+        <a class="btn" style="background:#6b7280;" href="/inscripciones/vistas/funcionarios/index.php">Volver</a>
+      </div>
+    </form>
+  </div>
 ';
 
 require __DIR__ . "/plantilla.php";
