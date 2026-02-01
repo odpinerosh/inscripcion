@@ -96,7 +96,8 @@ date_default_timezone_set("America/Bogota");
 		}
 
 
-		public function mail_ConfirmacionInscripcion($correo, $documento, $fecha){
+		public function mail_ConfirmacionInscripcion($correo, $documento, $fecha, $esDelegado = 0, $nAgencia = ''){
+
 			require_once '../clases/PHPMailer/PHPMailerAutoload.php';
 
 			// Cargar config sensible (NO versionar este archivo)
@@ -124,53 +125,79 @@ date_default_timezone_set("America/Bogota");
 			$doc = htmlspecialchars((string)$documento, ENT_QUOTES, 'UTF-8');
 			$fh  = htmlspecialchars((string)$fecha, ENT_QUOTES, 'UTF-8');
 
+			$esDel = ((int)$esDelegado === 1);
+
+			$ag = trim((string)$nAgencia);
+			$agSafe = ($ag !== '')
+				? htmlspecialchars($ag, ENT_QUOTES, 'UTF-8')
+				: 'No disponible';
+
+			$estadoHtml = $esDel
+				? "<b>Registrado</b>"
+				: "<b>Registrado</b> (pendiente de verificación)";
+
+			$importanteHtml = $esDel
+				? "<div style='padding:12px 14px; background:#ecfdf5; border:1px solid #a7f3d0; border-radius:10px;'>
+					<b>Nota:</b> Este registro corresponde a un <b>delegado actual</b>.
+				</div>"
+				: "<div style='padding:12px 14px; background:#fff7ed; border:1px solid #fed7aa; border-radius:10px;'>
+					<b>Importante:</b> Tu registro será verificado por la <b>Comisión Central Electoral de Escrutinios</b>.
+				</div>";
+
+
+
 			$mensaje = "
 			<div style='font-family: Arial, Helvetica, sans-serif; background:#f5f7f9; padding:24px;'>
-			<div style='max-width:640px; margin:0 auto; background:#ffffff; border-radius:12px; overflow:hidden; border:1px solid #e6e9ee;'>
-				<div style='background:#08a750; color:#fff; padding:18px 22px;'>
-				<h2 style='margin:0; font-size:18px;'>Inscripción confirmada</h2>
-				<div style='opacity:.95; font-size:13px; margin-top:4px;'>Delegados COOPTRAISS 2026-2030</div>
+				<div style='max-width:640px; margin:0 auto; background:#ffffff; border-radius:12px; overflow:hidden; border:1px solid #e6e9ee;'>
+					<div style='background:#08a750; color:#fff; padding:18px 22px;'>
+					<h2 style='margin:0; font-size:18px;'>Inscripción confirmada</h2>
+					<div style='opacity:.95; font-size:13px; margin-top:4px;'>Delegados COOPTRAISS 2026-2030</div>
+					</div>
+
+					<div style='padding:20px 22px; color:#1f2a37;'>
+					<p style='margin:0 0 12px 0; font-size:14px;'>
+						Apreciado(a) asociado(a),<br>
+						Tu inscripción ha sido <b>registrada correctamente</b>.
+					</p>
+
+					<table style='width:100%; border-collapse:collapse; font-size:14px; margin:12px 0 18px 0;'>
+						<tr>
+							<td style='padding:8px 10px; background:#f3f4f6; width:38%; border:1px solid #e5e7eb;'><b>Documento</b></td>
+							<td style='padding:8px 10px; border:1px solid #e5e7eb;'>$doc</td>
+						</tr>
+						<tr>
+							<td style='padding:8px 10px; background:#f3f4f6; border:1px solid #e5e7eb;'><b>Punto de atención</b></td>
+							<td style='padding:8px 10px; border:1px solid #e5e7eb;'>$agSafe</td>
+						</tr>
+
+						<tr>
+							<td style='padding:8px 10px; background:#f3f4f6; border:1px solid #e5e7eb;'><b>Fecha y hora</b></td>
+							<td style='padding:8px 10px; border:1px solid #e5e7eb;'>$fh</td>
+						</tr>
+						<tr>
+							<td style='padding:8px 10px; background:#f3f4f6; border:1px solid #e5e7eb;'><b>Estado</b></td>
+							<td style='padding:8px 10px; border:1px solid #e5e7eb;'>$estadoHtml</td>
+						</tr>
+					</table>
+
+					<div style='padding:12px 14px; background:#fff7ed; border:1px solid #fed7aa; border-radius:10px;'>
+						<b>Importante:</b> Tu registro será verificado por la <b>Comisión Central Electoral de Escrutinios</b>.
+					</div>
+
+					<p style='margin:16px 0 0 0; font-size:13px; color:#374151;'>
+						Si requieres soporte comunícate al correo <b>eventos@cooptraiss.com</b>.
+					</p>
+
+					<p style='margin:18px 0 0 0; font-size:13px; color:#6b7280;'>
+						Cordialmente,<br>
+						<b>COOPTRAISS</b>
+					</p>
+					</div>
+
+					<div style='padding:12px 22px; background:#f9fafb; color:#6b7280; font-size:12px; border-top:1px solid #e6e9ee;'>
+						Por favor no respondas este mensaje; se envía desde una cuenta de notificaciones automáticas.
+					</div>
 				</div>
-
-				<div style='padding:20px 22px; color:#1f2a37;'>
-				<p style='margin:0 0 12px 0; font-size:14px;'>
-					Apreciado(a) asociado(a),<br>
-					Tu inscripción ha sido <b>registrada correctamente</b>.
-				</p>
-
-				<table style='width:100%; border-collapse:collapse; font-size:14px; margin:12px 0 18px 0;'>
-					<tr>
-					<td style='padding:8px 10px; background:#f3f4f6; width:38%; border:1px solid #e5e7eb;'><b>Documento</b></td>
-					<td style='padding:8px 10px; border:1px solid #e5e7eb;'>$doc</td>
-					</tr>
-					<tr>
-					<td style='padding:8px 10px; background:#f3f4f6; border:1px solid #e5e7eb;'><b>Fecha y hora</b></td>
-					<td style='padding:8px 10px; border:1px solid #e5e7eb;'>$fh</td>
-					</tr>
-					<tr>
-					<td style='padding:8px 10px; background:#f3f4f6; border:1px solid #e5e7eb;'><b>Estado</b></td>
-					<td style='padding:8px 10px; border:1px solid #e5e7eb;'><b>Registrado</b> (pendiente de verificación)</td>
-					</tr>
-				</table>
-
-				<div style='padding:12px 14px; background:#fff7ed; border:1px solid #fed7aa; border-radius:10px;'>
-					<b>Importante:</b> Tu registro será verificado por la <b>Comisión Central Electoral de Escrutinios</b>.
-				</div>
-
-				<p style='margin:16px 0 0 0; font-size:13px; color:#374151;'>
-					Si requieres soporte comunícate al correo <b>eventos@cooptraiss.com</b>.
-				</p>
-
-				<p style='margin:18px 0 0 0; font-size:13px; color:#6b7280;'>
-					Cordialmente,<br>
-					<b>COOPTRAISS</b>
-				</p>
-				</div>
-
-				<div style='padding:12px 22px; background:#f9fafb; color:#6b7280; font-size:12px; border-top:1px solid #e6e9ee;'>
-					Por favor no respondas este mensaje; se envía desde una cuenta de notificaciones automáticas.
-				</div>
-			</div>
 			</div>
 			";
 

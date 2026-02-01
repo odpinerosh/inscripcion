@@ -145,6 +145,8 @@
 			}
 
 			$esDelegado = (int)($aso['aso_Delegado'] ?? 0) === 1;
+			$nAgencia = trim((string)($aso['aso_NAgencia'] ?? ''));
+			$esDelegadoInt = $esDelegado ? 1 : 0;
 			$antiguedad = (float)($aso['aso_Antiguedad'] ?? 0);
 			$inhabil    = (int)($aso['aso_Inhabil'] ?? 0) === 1;
 			$empleado   = (int)($aso['aso_Empleado'] ?? 0) === 1;
@@ -323,7 +325,7 @@
 			// Correo confirmación (si falla, no anulamos inscripción)
 			$sent = true;
 			if (trim((string)$correo) !== '') {
-				$sent = $eventos->mail_ConfirmacionInscripcion($correo, $id_Asociado, $fecha);
+				$sent = $eventos->mail_ConfirmacionInscripcion($correo, $id_Asociado, $fecha, $esDelegadoInt, $nAgencia);
 			}
 
 			// Cerrar SOLO la sesión OTP después de inscribir 
