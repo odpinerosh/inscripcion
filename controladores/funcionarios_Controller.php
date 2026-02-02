@@ -127,6 +127,21 @@ switch ($accion) {
         $passU1   = (string)($_POST['password'] ?? '');
         $passU2   = (string)($_POST['password2'] ?? '');
 
+        $rolNuevo = trim($_POST['rol'] ?? 'usuario');
+        $rolNuevo = strtolower($rolNuevo);
+
+        if (!in_array($rolNuevo, ['usuario','gestor','superadmin'], true)) {
+            $rolNuevo = 'usuario';
+        }
+
+        $rolActual = func_role(); // viene de $_SESSION['FUNC_USER']['rol']
+
+        // Un gestor NO puede crear superadmins
+        if ($rolActual !== 'superadmin' && $rolNuevo === 'superadmin') {
+            http_response_code(403);
+            exit('No autorizado para crear superadmin.');
+        }
+
         if ($usuario === '' || $nombreU === '' || $passU1 === '' || $passU2 === '') {
             header("Location: /inscripciones/vistas/funcionarios/crear_usuario.php?e=1");
             exit;
@@ -155,8 +170,8 @@ switch ($accion) {
 
         $hash = password_hash($passU1, PASSWORD_DEFAULT);
 
-        $ins = $cn->prepare("INSERT INTO usuarios_funcionarios (usuario, nombre, pass_hash, activo) VALUES (?, ?, ?, 1)");
-        $ins->bind_param("sss", $usuario, $nombreU, $hash);
+        $ins = $cn->prepare("INSERT INTO usuarios_funcionarios (usuario, nombre, pass_hash, rol activo) VALUES (?, ?, ?, ?, 1)");
+        $ins->bind_param("ssss", $usuario, $nombreU, $hash, $rolNuevo);
 
         if ($ins->execute()) {
             $ins->close();
