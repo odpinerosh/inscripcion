@@ -27,7 +27,7 @@ $contenido = '
   </div>
 ';
 
-if (!empty($_SESSION["FUNC_USER"]["usuario"]) && $_SESSION["FUNC_USER"]["usuario"] === "admin") {
+if (!empty($_SESSION["FUNC_USER"]["usuario"]) && ($_SESSION["FUNC_USER"]["usuario"] === "admin" || $_SESSION["FUNC_USER"]["rol"] === "gestor" )) {
   $contenido .= '
     <div class="d-grid gap-2 d-sm-flex">
       <a class="btn btn-outline-secondary" href="/inscripciones/vistas/funcionarios/crear_usuario.php">Administrar usuarios</a>

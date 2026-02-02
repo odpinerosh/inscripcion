@@ -170,7 +170,7 @@ switch ($accion) {
 
         $hash = password_hash($passU1, PASSWORD_DEFAULT);
 
-        $ins = $cn->prepare("INSERT INTO usuarios_funcionarios (usuario, nombre, pass_hash, rol activo) VALUES (?, ?, ?, ?, 1)");
+        $ins = $cn->prepare("INSERT INTO usuarios_funcionarios (usuario, nombre, pass_hash, rol, activo) VALUES (?, ?, ?, ?, 1)");
         $ins->bind_param("ssss", $usuario, $nombreU, $hash, $rolNuevo);
 
         if ($ins->execute()) {
