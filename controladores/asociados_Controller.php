@@ -188,22 +188,34 @@
 					if (!empty($_SESSION['FUNC_USER'])) {
 
 						// === FUNCIONARIOS: DOCUMENTOS FÍSICOS (NO PDF) ===
-						$html .= "
-						<div class='alert alert-success' role='alert'>
-							<b>Cumple con los requisitos para inscribirse.</b><br>
-							Documentos físicos a solicitar:
-							<ul style='margin: 8px 0 0 -18px;'>
-							<li><b>Fotocopia de la cédula</b> (físico)</li>"
-							. ($requiereCert
-								? "<li><b>Certificado de cooperativismo</b> (físico) — registra ".number_format($horas,0,'.','')." horas y se requieren 80</li>"
-								: ""
-								)
-							. "</ul>
-						</div>
-						<div class='alert alert-info' role='alert'>
-							Nota: En este módulo interno <b>no se cargan adjuntos</b>.
-						</div>
-						";
+						$html .= '
+							<div class="alert alert-success" role="alert">
+								<b>Cumple con los requisitos para inscribirse.</b><br><br>
+								Documentos físicos a validar:
+								<table class="table table-bordered table-sm" style="margin-top: 10px;">
+									<thead>
+										<tr>
+											<th style="text-align: center; width: 40px;">✓</th>
+											<th>Documento</th>
+										</tr>
+									</thead>
+									<tbody>
+										<tr>
+											<td style="text-align: center;">
+												<input type="checkbox" class="chk-requisito">
+											</td>
+											<td><b>Fotocopia de la cédula</b> (físico)</td>
+										</tr>
+										<tr>
+											<td style="text-align: center;">
+												<input type="checkbox" class="chk-requisito">
+											</td>
+											<td><b>Certificado de cooperativismo</b> (físico) — registra ' . number_format($horas,0,'.','') . ' horas y se requieren 80</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						';
 
 					} else {
 

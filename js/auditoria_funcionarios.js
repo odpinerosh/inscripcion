@@ -71,6 +71,14 @@ async function validar_Formulario(){
     return;
   }
 
+  const checks = document.querySelectorAll('.chk-requisito');
+  const todos = Array.from(checks).every(chk => chk.checked);
+
+  if (!todos) {
+    Swal.fire({ icon:'warning', title:'Requisitos incompletos', text:'Debe marcar todos los documentos requeridos antes de continuar.' });
+    return;
+  }
+
   const r = await Swal.fire({
     icon: 'question',
     title: 'Confirmar inscripción',

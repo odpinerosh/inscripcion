@@ -186,7 +186,7 @@ date_default_timezone_set("America/Bogota");
 					</div>
 
 					<p style='margin:16px 0 0 0; font-size:13px; color:#374151;'>
-						Si requieres soporte comunícate al correo <b>eventos@cooptraiss.com</b>.
+						Si requieres soporte comunícate al correo <b>elecciones2026@cooptraiss.com</b>.
 					</p>
 
 					<p style='margin:18px 0 0 0; font-size:13px; color:#6b7280;'>
@@ -202,7 +202,7 @@ date_default_timezone_set("America/Bogota");
 			</div>
 			";
 
-			$altText = "Inscripción confirmada.\nDocumento: $documento\nFecha y hora: $fecha\n\nImportante: Su registro será verificado por la Comisión Central Electoral de Escrutinios.\n\nSoporte: eventos@cooptraiss.com\nCOOPTRAISS";
+			$altText = "Inscripción confirmada.\nDocumento: $documento\nFecha y hora: $fecha\n\nImportante: Su registro será verificado por la Comisión Central Electoral de Escrutinios.\n\nSoporte: elecciones2026@cooptraiss.com\nCOOPTRAISS";
 
 			try {
 				$mail = new PHPMailer(true);
