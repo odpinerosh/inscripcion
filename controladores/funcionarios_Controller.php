@@ -138,8 +138,8 @@ switch ($accion) {
 
         // Un gestor NO puede crear superadmins
         if ($rolActual !== 'superadmin' && $rolNuevo === 'superadmin') {
-            http_response_code(403);
-            exit('No autorizado para crear superadmin.');
+            header("Location: /inscripciones/vistas/funcionarios/crear_usuario.php?e=7");
+            exit;
         }
 
         if ($usuario === '' || $nombreU === '' || $passU1 === '' || $passU2 === '') {
@@ -256,7 +256,7 @@ switch ($accion) {
 
             $hash = password_hash($pass, PASSWORD_DEFAULT);
 
-            $ins = $cn->prepare("INSERT INTO usuarios_funcionarios (usuario, nombre, pass_hash, activo) VALUES (?, ?, ?, 1)");
+            $ins = $cn->prepare("INSERT INTO usuarios_funcionarios (usuario, nombre, pass_hash, rol, activo) VALUES (?, ?, ?, 'usuario', 1)");
             $ins->bind_param("sss", $usuario, $nombre, $hash);
 
             if ($ins->execute()) {
@@ -276,7 +276,7 @@ switch ($accion) {
             'generadas' => $generadas
         ];
 
-        header("Location: /inscripciones/vistas/funcionarios/crear_usuario.php?ok=1");
+        header("Location: /inscripciones/vistas/funcionarios/crear_usuario.php?ok=3");
         exit;
  
     //resetear contraseña de un usuario existente
@@ -308,8 +308,8 @@ switch ($accion) {
         // Proteger cambio de clave de admin/superadmin
         $target = strtolower($usuario);
         if (($target === 'admin' || $target === 'superadmin') && func_role() !== 'superadmin') {
-            http_response_code(403);
-            exit('No autorizado para cambiar la clave de admin/superadmin.');
+            header("Location: /inscripciones/vistas/funcionarios/crear_usuario.php?e=8");
+            exit;
         }
 
 

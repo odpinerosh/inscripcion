@@ -29,6 +29,7 @@ $e  = $_GET['e'] ?? '';
 $msgOk = "";
 if ($ok === '1') $msgOk = "Usuario creado correctamente.";
 if ($ok === '2') $msgOk = "Contraseña cambiada correctamente.";
+if ($ok === '3') $msgOk = "Finalizó el proceso. Revisa el resultado.";
 
 //Mensajes Error
 $msgEr = "";
@@ -38,6 +39,8 @@ if ($e === '3') $msgEr = "El usuario ya existe.";
 if ($e === '4') $msgEr = "No fue posible crear el usuario. Intenta nuevamente.";
 if ($e === '5') $msgEr = "El usuario no existe. Intenta nuevamente.";
 if ($e === '6') $msgEr = "No fue posible cambiar la contraseña. Intenta nuevamente.";
+if ($e === '7') $msgEr = "No está autorizado para crear usuarios con perfil administrador.";
+if ($e === '8') $msgEr = "No autorizado para cambiar la clave de admin/superadmin.";
 
 $contenido = '
   <div class="card" style="margin-bottom:10px;">
@@ -118,7 +121,7 @@ $contenido .= '
         <select name="rol" required style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px;">
           '.$optsRol.'
         </select>
-        <small class="muted">Solo superadmin puede crear otros superadmin.</small>
+        <!-- small class="muted">Solo superadmin puede crear otros superadmin.</small -->
       </div>
 
       <div style="margin-bottom:10px;">
@@ -149,8 +152,7 @@ $contenido .= '
 
     <form method="POST" action="/inscripciones/controladores/funcionarios_Controller.php?accion=importar_usuarios" autocomplete="off">
       <textarea name="csv" rows="10" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px;"
-        placeholder="ID,NOMBRES,Clave123">        
-      </textarea>
+        placeholder="ID,NOMBRES,Clave123"></textarea>
 
       <div style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
         <button class="btn" type="submit">Importar usuarios</button>
@@ -165,7 +167,7 @@ $contenido .= '
   <div class="card" style="margin-top:40px;">
     <h3 style="margin:0 0 10px 0;">Cambio de contraseña</h3>
     <div class="muted" style="margin-bottom:10px;">
-      Solo admin. Define una nueva contraseña para un usuario existente.
+      Define una nueva contraseña para un usuario existente.
     </div>
 
     <form method="POST" action="/inscripciones/controladores/funcionarios_Controller.php?accion=reset_password" autocomplete="off">
