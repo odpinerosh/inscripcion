@@ -4,9 +4,35 @@
 require_once __DIR__ . "/../config/conecta.php";
 require_once __DIR__ . "/../config/session.php";
 
+// Iniciar sesión si no está iniciada
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+
+// Funciones de ayuda para manejo de usuarios y roles
+// Obtener datos del usuario actual
+function func_user() {
+    return $_SESSION['FUNC_USER'] ?? [];
+}
+
+// Obtener rol del usuario actual
+function func_role() {
+    $u = func_user();
+    return $u['rol'] ?? 'usuario';
+}
+
+// Requiere que el usuario tenga uno de los roles especificados
+function require_roles(array $roles) {
+    if (empty($_SESSION['FUNC_USER']['usuario'])) {
+        http_response_code(401);
+        exit('No autenticado.');
+    }
+    if (!in_array(func_role(), $roles, true)) {
+        http_response_code(403);
+        exit('Acceso denegado.');
+    }
+}
+
 
 $accion = $_GET['accion'] ?? '';
 
@@ -23,7 +49,7 @@ switch ($accion) {
 
         $cn = Conectar::conexion();
 
-        $sql = "SELECT id, usuario, nombre, pass_hash, activo, intentos, bloqueado_hasta
+        $sql = "SELECT id, usuario, nombre, pass_hash, activo, intentos, bloqueado_hasta, rol
                 FROM usuarios_funcionarios
                 WHERE usuario = ?
                 LIMIT 1";
@@ -35,8 +61,9 @@ switch ($accion) {
         $id = $u_usuario = $nombre = $pass_hash = $bloqueado_hasta = null;
         $activo = 0;
         $intentos = 0;
-
-        $stmt->bind_result($id, $u_usuario, $nombre, $pass_hash, $activo, $intentos, $bloqueado_hasta);
+        $rol = null;
+        
+        $stmt->bind_result($id, $u_usuario, $nombre, $pass_hash, $activo, $intentos, $bloqueado_hasta, $rol);
         $encontro = $stmt->fetch();
         $stmt->close();
 
@@ -73,7 +100,8 @@ switch ($accion) {
         $_SESSION['FUNC_USER'] = [
             'id'      => (int)$id,
             'usuario' => $u_usuario,
-            'nombre'  => $nombre
+            'nombre'  => $nombre,
+            'rol'     => $rol ?: 'usuario'
         ];
 
         $upd = $cn->prepare("UPDATE usuarios_funcionarios SET ultimo_login=NOW(), intentos=0, bloqueado_hasta=NULL WHERE id=?");
@@ -85,15 +113,14 @@ switch ($accion) {
         exit;
 
     case 'crear_usuario':
+        
         if (empty($_SESSION['FUNC_USER'])) {
             header("Location: /inscripciones/vistas/funcionarios/login.php");
             exit;
         }
-        if (empty($_SESSION['FUNC_USER']['usuario']) || $_SESSION['FUNC_USER']['usuario'] !== 'admin') {
-            http_response_code(403);
-            echo "Acceso denegado.";
-            exit;
-        }
+
+        // Solo superadmin y gestor pueden crear usuarios
+        require_roles(['superadmin','gestor']);
 
         $usuario  = trim($_POST['usuario'] ?? '');
         $nombreU  = trim($_POST['nombre'] ?? '');
@@ -143,12 +170,14 @@ switch ($accion) {
 
     case 'importar_usuarios':
 
-        if (empty($_SESSION['FUNC_USER']['usuario']) || $_SESSION['FUNC_USER']['usuario'] !== 'admin') {
-            http_response_code(403);
-            echo "Acceso denegado.";
+        if (empty($_SESSION['FUNC_USER'])) {
+            header("Location: /inscripciones/vistas/funcionarios/login.php");
             exit;
         }
 
+        // Solo superadmin y gestor pueden crear usuarios
+        require_roles(['superadmin','gestor']);
+        
         $csv = trim($_POST['csv'] ?? '');
         if ($csv === '') {
             header("Location: /inscripciones/vistas/funcionarios/crear_usuario.php?e=1");
@@ -235,6 +264,72 @@ switch ($accion) {
         header("Location: /inscripciones/vistas/funcionarios/crear_usuario.php?ok=1");
         exit;
  
+    //resetear contraseña de un usuario existente
+    case 'reset_password':
+
+        if (empty($_SESSION['FUNC_USER'])) {
+            header("Location: /inscripciones/vistas/funcionarios/login.php");
+            exit;
+        }
+
+        // Solo superadmin y gestor pueden resetear contraseñas
+        require_roles(['superadmin','gestor']);
+
+        $usuario = trim($_POST['usuario'] ?? '');
+        $p1      = (string)($_POST['password'] ?? '');
+        $p2      = (string)($_POST['password2'] ?? '');
+
+        if ($usuario === '' || $p1 === '' || $p2 === '') {
+            header("Location: /inscripciones/vistas/funcionarios/crear_usuario.php?e=1");
+            exit;
+        }
+        if ($p1 !== $p2) {
+            header("Location: /inscripciones/vistas/funcionarios/crear_usuario.php?e=2");
+            exit;
+        }
+
+        $usuario = preg_replace('/\s+/', '', $usuario);
+
+        // Proteger cambio de clave de admin/superadmin
+        $target = strtolower($usuario);
+        if (($target === 'admin' || $target === 'superadmin') && func_role() !== 'superadmin') {
+            http_response_code(403);
+            exit('No autorizado para cambiar la clave de admin/superadmin.');
+        }
+
+
+        $cn = Conectar::conexion();
+
+        // Verificar existencia
+        $stmt = $cn->prepare("SELECT id FROM usuarios_funcionarios WHERE usuario=? LIMIT 1");
+        $stmt->bind_param("s", $usuario);
+        $stmt->execute();
+        $stmt->bind_result($id);
+        $stmt->fetch();
+        $stmt->close();
+
+        if (empty($id)) {
+            header("Location: /inscripciones/vistas/funcionarios/crear_usuario.php?e=5");
+            exit;
+        }
+
+        $hash = password_hash($p1, PASSWORD_DEFAULT);
+
+        $up = $cn->prepare("UPDATE usuarios_funcionarios
+                            SET pass_hash=?, intentos=0, bloqueado_hasta=NULL
+                            WHERE id=? LIMIT 1");
+        $up->bind_param("si", $hash, $id);
+
+        if ($up->execute()) {
+            $up->close();
+            header("Location: /inscripciones/vistas/funcionarios/crear_usuario.php?ok=2");
+            exit;
+        }
+
+        $up->close();
+        header("Location: /inscripciones/vistas/funcionarios/crear_usuario.php?e=6");
+        exit;
+
 
     case 'logout':
         unset($_SESSION['FUNC_USER']);

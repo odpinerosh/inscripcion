@@ -1,22 +1,43 @@
 <?php
 require_once __DIR__ . "/../../config/session_funcionarios.php";
 
-if (empty($_SESSION["FUNC_USER"]["usuario"]) || $_SESSION["FUNC_USER"]["usuario"] !== "admin") {
+
+if (empty($_SESSION["FUNC_USER"]["usuario"])) {
+  header("Location: /inscripciones/vistas/funcionarios/login.php");
+  exit;
+}
+
+//Solo superadmin y gestor pueden crear usuarios
+$rolActual = $_SESSION["FUNC_USER"]["rol"] ?? "usuario";
+if (!in_array($rolActual, ["superadmin", "gestor"], true)) {
   header("Location: /inscripciones/vistas/funcionarios/index.php");
   exit;
 }
+
+//Definir roles que el rol actual puede crear
+$rolesPermitidos = ($rolActual === "superadmin")
+  ? ["usuario" => "Usuario", "gestor" => "Gestor", "superadmin" => "Superadmin"]
+  : ["usuario" => "Usuario", "gestor" => "Gestor"];
+
 
 $titulo = "Crear usuario (Funcionarios)";
 
 $ok = $_GET['ok'] ?? '';
 $e  = $_GET['e'] ?? '';
 
-$msgOk = ($ok === '1') ? "Usuario creado correctamente." : "";
+//Mensajes OK
+$msgOk = "";
+if ($ok === '1') $msgOk = "Usuario creado correctamente.";
+if ($ok === '2') $msgOk = "Contraseña cambiada correctamente.";
+
+//Mensajes Error
 $msgEr = "";
 if ($e === '1') $msgEr = "Debes diligenciar todos los campos.";
 if ($e === '2') $msgEr = "Las contraseñas no coinciden.";
 if ($e === '3') $msgEr = "El usuario ya existe.";
 if ($e === '4') $msgEr = "No fue posible crear el usuario. Intenta nuevamente.";
+if ($e === '5') $msgEr = "El usuario no existe. Intenta nuevamente.";
+if ($e === '6') $msgEr = "No fue posible cambiar la contraseña. Intenta nuevamente.";
 
 $contenido = '
   <div class="card" style="margin-bottom:10px;">
@@ -70,6 +91,15 @@ if (!empty($_SESSION['IMPORT_RES'])) {
   }
 }
 
+
+//Crear Usuario
+$optsRol = '';
+foreach ($rolesPermitidos as $k => $label) {
+  $kSafe = htmlspecialchars($k, ENT_QUOTES, 'UTF-8');
+  $lSafe = htmlspecialchars($label, ENT_QUOTES, 'UTF-8');
+  $optsRol .= "<option value=\"{$kSafe}\">{$lSafe}</option>";
+}
+
 $contenido .= '
   <div class="card">
     <form method="POST" action="/inscripciones/controladores/funcionarios_Controller.php?accion=crear_usuario" autocomplete="off">
@@ -81,6 +111,14 @@ $contenido .= '
       <div style="margin-bottom:10px;">
         <label><b>Nombre</b></label><br>
         <input type="text" name="nombre" required style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px;">
+      </div>
+
+      <div style="margin-bottom:10px;">
+        <label><b>Rol</b></label><br>
+        <select name="rol" required style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px;">
+          '.$optsRol.'
+        </select>
+        <small class="muted">Solo superadmin puede crear otros superadmin.</small>
       </div>
 
       <div style="margin-bottom:10px;">
@@ -98,7 +136,10 @@ $contenido .= '
         <a class="btn" style="background:#6b7280; color:#fff;" href="/inscripciones/vistas/funcionarios/index.php">Volver</a>
       </div>
     </form>
-  </div>
+  </div>';
+
+//Importar usuarios
+$contenido .= '
   <div class="card" style="margin-top:40px;">
     <h3 style="margin:0 0 10px 0;">Lista de usuarios (CSV)</h3>
     <div class="muted" style="margin-bottom:10px;">
@@ -118,5 +159,38 @@ $contenido .= '
     </form>
   </div>
 ';
+
+//Cambiar contraseñas
+$contenido .= '
+  <div class="card" style="margin-top:40px;">
+    <h3 style="margin:0 0 10px 0;">Cambio de contraseña</h3>
+    <div class="muted" style="margin-bottom:10px;">
+      Solo admin. Define una nueva contraseña para un usuario existente.
+    </div>
+
+    <form method="POST" action="/inscripciones/controladores/funcionarios_Controller.php?accion=reset_password" autocomplete="off">
+      <div style="margin-bottom:10px;">
+        <label><b>Usuario</b></label><br>
+        <input type="text" name="usuario" required style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px;">
+      </div>
+
+      <div style="margin-bottom:10px;">
+        <label><b>Nueva contraseña</b></label><br>
+        <input type="password" name="password" required style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px;">
+      </div>
+
+      <div style="margin-bottom:14px;">
+        <label><b>Confirmar contraseña</b></label><br>
+        <input type="password" name="password2" required style="width:100%; padding:10px; border:1px solid #ddd; border-radius:8px;">
+      </div>
+
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn" type="submit">Cambiar contraseña</button>
+        <a class="btn" style="background:#6b7280; color:#fff;" href="/inscripciones/vistas/funcionarios/index.php">Volver</a>
+      </div>
+    </form>
+  </div>
+';
+
 
 require __DIR__ . "/plantilla.php";
