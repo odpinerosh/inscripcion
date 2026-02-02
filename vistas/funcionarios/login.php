@@ -21,10 +21,9 @@ if ($e === '2') $mensaje = 'Usuario bloqueado temporalmente por intentos fallido
   <title>Ingreso Funcionarios - Inscripciones</title>
   <link href="/inscripciones/images/favicon.ico" rel="shortcut icon" type="image/vnd.microsoft.icon">
 
-  <!-- Bootstrap (si está disponible en tu proyecto) -->
+  <!-- Bootstrap -->
   <link rel="stylesheet" href="/inscripciones/assets/vendor/bootstrap/css/bootstrap.min.css">
-  <link rel="stylesheet" href="assets/vendor/bootstrap/css/bootstrap.min.css">
-
+  
   <style>
     :root{
       --brand:#0b2a4a;
@@ -83,7 +82,7 @@ if ($e === '2') $mensaje = 'Usuario bloqueado temporalmente por intentos fallido
 
             <hr class="my-4">
             <div class="muted">
-              Si tienes inconvenientes con el acceso, valida con el administrador del módulo.
+              Si tienes inconvenientes con el acceso, comunícate con la Unidad de Tecnología.
             </div>
           </div>
         </div>
@@ -94,7 +93,6 @@ if ($e === '2') $mensaje = 'Usuario bloqueado temporalmente por intentos fallido
     </div>
   </div>
 
-  <script src="/inscripciones/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-  <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  <script src="/inscripciones/assets/vendor/bootstrap/js/bootstrap.bundle.js"></script>
 </body>
 </html>

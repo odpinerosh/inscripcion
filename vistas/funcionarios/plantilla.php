@@ -13,11 +13,9 @@ $usuario = $_SESSION['FUNC_USER']['usuario'] ?? '';
   <title><?php echo htmlspecialchars($titulo ?? 'Módulo Interno'); ?></title>
   <link href="/inscripciones/images/favicon.ico" rel="shortcut icon" type="image/vnd.microsoft.icon">
 
-  <!-- Bootstrap (si está disponible en tu proyecto) -->
+  <!-- Bootstrap -->
   <link rel="stylesheet" href="/inscripciones/assets/vendor/bootstrap/css/bootstrap.min.css">
-  <link rel="stylesheet" href="assets/vendor/bootstrap/css/bootstrap.min.css">
   
-
   <style>
     :root{
       --brand:#0b2a4a;
@@ -25,25 +23,19 @@ $usuario = $_SESSION['FUNC_USER']['usuario'] ?? '';
       --bg:#f5f6f8;
     }
     body{ background:var(--bg); }
-    /* Fallbacks básicos si Bootstrap no carga (no estorban si sí carga) */
+    /* Fallbacks básicos si Bootstrap no carga */
     .card{
       border-radius: .9rem;
       box-shadow: 0 2px 10px rgba(0,0,0,.06);
       border:1px solid rgba(15,23,42,.08);
     }
 
-    /*
-      En algunas vistas el contenido se coloca directo dentro de .card (sin .card-body)
-      y se ve “pegado” al borde. Este padding mejora la legibilidad sin tocar la lógica.
-      Si una vista necesita tarjeta sin padding, puede agregar class="card card-no-pad".
-    */
     .content-wrap .card{ padding: 1rem; }
     @media (min-width: 768px){
       .content-wrap .card{ padding: 1.25rem; }
     }
     .content-wrap .card.card-no-pad{ padding: 0; }
 
-    /* Si existe card-header/footer, que no queden “inflados” por el padding del card */
     .content-wrap .card > .card-header{
       margin: -1rem -1rem 1rem;
       padding: .75rem 1rem;
@@ -85,11 +77,6 @@ $usuario = $_SESSION['FUNC_USER']['usuario'] ?? '';
       white-space: nowrap;
     }
 
-    /*
-      Indicadores “verificado” a la derecha de inputs:
-      En algunas vistas se renderiza un span/botón verde sin ícono/texto (queda un cuadrito verde vacío).
-      Esto fuerza un estilo consistente y, con el JS de abajo, se inyecta un ✓ si viene vacío.
-    */
     .input-group-text.bg-success,
     .input-group-text.text-bg-success{
       color:#fff;
@@ -126,9 +113,7 @@ $usuario = $_SESSION['FUNC_USER']['usuario'] ?? '';
     </div>
   </main>
 
-  <!-- Bootstrap JS (opcional) -->
-  <script src="/inscripciones/assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
-  <script src="assets/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
   <script>

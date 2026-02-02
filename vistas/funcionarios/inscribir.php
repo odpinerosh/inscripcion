@@ -32,7 +32,7 @@ $contenido = '
       <div style="display:flex; gap:10px; flex-wrap:wrap;">
         <a class="btn" href="#" onclick="validar_Documento(); return false;">Consultar</a>
         <button class="btn" id="enviar" type="button" onclick="validar_Formulario();" disabled>Confirmar inscripción</button>
-        <a class="btn" href="/inscripciones/vistas/funcionarios/index.php" style="background:#6b7280;">Volver</a>
+        <a class="btn" href="/inscripciones/vistas/funcionarios/index.php" style="background:#6b7280; color:#fff;">Volver</a>
       </div>
 
       <div id="div_Alertas" style="margin-top:12px;"></div>
