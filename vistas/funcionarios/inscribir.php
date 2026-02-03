@@ -14,8 +14,8 @@ $contenido = '
   </div>
   <div class="card warn">
     <b>Documentos físicos (NO se cargan al sistema)</b>
-    <ul style="margin:8px 0 0 18px;">
-      <li>Solicitar <b>copia de la cédula</b>.</li>
+    <ul style="margin:8px 0 0 -18px;">
+      <li>Solicitar <b>la cédula fìsica o digital (no copia)</b>.</li>
       <li>Si el asociado <b>tiene menos horas</b>, solicitar el <b>certificado</b>.</li>
       <li>Verificar físicamente antes de finalizar.</li>
     </ul>

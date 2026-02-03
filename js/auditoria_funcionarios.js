@@ -72,6 +72,7 @@ async function validar_Formulario(){
   }
 
   const checks = document.querySelectorAll('.chk-requisito');
+  const agencia = $('#agencia').val();
   const todos = Array.from(checks).every(chk => chk.checked);
 
   if (!todos) {
@@ -81,7 +82,7 @@ async function validar_Formulario(){
 
   const r = await Swal.fire({
     icon: 'question',
-    title: 'Confirmar inscripción',
+    title: 'Confirmar inscripción \n Delegado por ' + agencia,
     text: '¿Está seguro de confirmar la inscripción?',
     showCancelButton: true,
     confirmButtonText: 'Sí, confirmar',

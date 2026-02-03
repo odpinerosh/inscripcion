@@ -126,12 +126,20 @@
 						</span>
 					</div>
 
+					<div id='div_Punto' class='form-group'>
+						<h5>Punto de Atención</h5>
+						<span class='input-group-prepend'>
+						<input type='text' name='agencia' id='agencia' class='form-control' value='".$consultar_Asociado['aso_NAgencia']."' readonly>
+						<span class='input-group-text' style='background-color:#08a750;color:#fff101'><i class='fa-solid fa-map'></i></span>
+						</span>
+					</div>
+
 					<div id='div_Celular' class='form-group' style='display:none'>
 						<h5>Número de celular</h5>
 						<span class='input-group-prepend'>
 						<input type='text' name='celular' id='celular' class='form-control' maxlength='10'
 								value='".$consultar_Asociado['aso_Celular']."' readonly>
-						<span class='input-group-text' style='background-color:#08a750;color:#fff101'><i class='fas fa-phone'></i></span>
+						<span class='input-group-text' style='background-color:#08a750;color:#fff101'><i class='fas fa-map-pin'></i></span>
 						</span>
 					</div>
 					<br>
@@ -164,13 +172,14 @@
 
 						if (count($razones) > 0) {
 							$items = "";
-							foreach ($razones as $r) { $items .= "<li>{$r}</li>"; }
+							foreach ($razones as $r) { $items .= "<tr><td><span class='fa-solid fa-triangle-exclamation'></span></td>
+							                                      <td style='padding:2px 0 2px 10px;'>{$r}</td></tr>"; }
 
 							$html .= "
-							<div class='alert alert-danger' role='alert'>
+							<div class='alert alert-danger' role='alert' style='background: #fde2e2;'>
 								<b>⛔ No habilitado para inscripción</b>
 								<p>Se identificaron las siguientes razones:</p>
-								<ul style='margin:8px 0 0 18px;'>{$items}</ul>
+								<table style='border: none;'>{$items}</table>
 							</div><br>
 							<div class='form-group' style='text-align:center; margin-top:20px'>
 								{$btnSalir}
@@ -204,7 +213,7 @@
 											<td style="text-align: center;">
 												<input type="checkbox" class="chk-requisito">
 											</td>
-											<td><b>Fotocopia de la cédula</b> (físico)</td>
+											<td><b>Cédula de ciudadanía</b> física o digital (no copia).</td>
 										</tr>
 										<tr>
 											<td style="text-align: center;">
@@ -232,12 +241,12 @@
 								</ul>
 							</div>
 							<div class='form-group'>
-								<label><b>Fotocopia de la cédula (PDF)</b></label>
+								<label><b>Copia de la cédula (PDF)</b></label>
 								<input type='file' id='pdf_cedula' name='pdf_cedula' class='form-control' accept='application/pdf'>
 								<small class='text-muted'>Solo PDF.</small>
 							</div>
 							<div class='form-group'>
-								<label><b>Certificado curso Cooperativismo (PDF)</b></label>
+								<label><b>Certificado curso cooperativismo (PDF)</b></label>
 								<input type='file' id='pdf_certificado' name='pdf_certificado' class='form-control' accept='application/pdf'>
 								<small class='text-muted'>Solo PDF.</small>
 							</div>
