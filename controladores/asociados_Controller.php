@@ -5,6 +5,8 @@
 		session_start();
 	}
 
+	//incluir archivo de configuración - ventana de inscripciones
+	require_once("../config/ventana_inscripcion.php");
 	//conexión a base de datos
 	require_once("../config/conecta.php");
 	
@@ -83,10 +85,35 @@
 	                </div>
 				";				
 			}else{
+
 				//validar si ya se encuentra inscrito
 				$eventos = new Eventos();
 				$validar_Inscripcion = $eventos->validar_Inscripcion($id_Asociado, $id_Evento);
 				if (!$validar_Inscripcion ) {
+					// =========================
+					// Ventana Inscripciones Delegados 2026 (bloqueo temprano)
+					// 5-feb-2026: nacional 08:00–16:00
+					// 6-feb-2026: solo Cundinamarca (aso_Agen_Id = 101) 08:00–16:00
+					// TZ: America/Bogota
+					// =========================
+					$asoAgenId = (int)($consultar_Asociado['aso_Agen_Id'] ?? 0);
+					$win = checkVentanaDelegados2026($asoAgenId);
+
+					if (!$win['ok']) {
+						echo "
+							<div class='alert alert-warning' role='alert'>
+								<b>Inscripción no habilitada</b><br>
+								{$win['msg']}
+							</div>
+							<div class='form-group' style='text-align:center; margin-top:20px'>
+								{$btnSalir}
+							</div>
+						";
+						exit;
+					}
+					// =========================
+
+					//extraer datos del asociado					
 					$esDelegado = (int)($consultar_Asociado['aso_Delegado'] ?? 0);
 					$antiguedad = (float)($consultar_Asociado['aso_Antiguedad'] ?? 0);
 					$inhabil   = (int)($consultar_Asociado['aso_Inhabil'] ?? 0);

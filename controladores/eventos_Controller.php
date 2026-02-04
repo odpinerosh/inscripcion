@@ -5,7 +5,13 @@
 		session_start();
 	}
 
+	//conexión a base de datos
 	require_once("../config/conecta.php");
+
+	//incluir archivo de configuración - ventana de inscripciones
+	require_once("../config/ventana_inscripcion.php");
+
+	//Llamada al modelo
 	require_once("../modelos/eventos_Model.php");
 	require_once("../modelos/asociados_Model.php");
 
@@ -144,6 +150,26 @@
 				exit;
 			}
 
+			// =========================
+			// Ventana Inscripciones Delegados 2026
+			// 5-feb-2026: nacional 08:00–16:00
+			// 6-feb-2026: solo Cundinamarca (aso_Agen_Id = 101) 08:00–16:00
+			// TZ: America/Bogota
+			// =========================
+			$asoAgenId = (int)($aso['aso_Agen_Id'] ?? 0);
+			$win = checkVentanaDelegados2026($asoAgenId);
+
+			if (!$win['ok']) {
+				if ($isFunc) {
+					auditar_inscripcion_func($funcUser, $id_Asociado, $id_Evento, "BLOQUEADO", $win['code'], 0, null);
+				}
+				echo json_encode(['ok'=>false, 'code'=>$win['code'], 'msg'=>$win['msg']], JSON_UNESCAPED_UNICODE);
+				exit;
+			}
+			// =========================
+
+
+			// Reglas de negocio
 			$esDelegado = (int)($aso['aso_Delegado'] ?? 0) === 1;
 			$nAgencia = trim((string)($aso['aso_NAgencia'] ?? ''));
 			$esDelegadoInt = $esDelegado ? 1 : 0;

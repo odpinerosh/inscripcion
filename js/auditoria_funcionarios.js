@@ -83,7 +83,7 @@ async function validar_Formulario(){
   const r = await Swal.fire({
     icon: 'question',
     title: 'Confirmar inscripción \n Delegado por ' + agencia,
-    text: '¿Está seguro de confirmar la inscripción?',
+    text: '¿Está seguro de confirmar la inscripción? funcionarios',
     showCancelButton: true,
     confirmButtonText: 'Sí, confirmar',
     cancelButtonText: 'No, cancelar'
@@ -91,7 +91,7 @@ async function validar_Formulario(){
 
   if (!r.isConfirmed) return;
 
-  $('#enviar').prop('disabled', true);
+  $('#enviar2').prop('disabled', true);
   realizar_Inscripcion();
 }
 
@@ -143,7 +143,7 @@ function realizar_Inscripcion(){
                   escHtml((data || '').slice(0, 2000)) +
                   "</pre>"
           });
-          $('#enviar').prop('disabled', false);
+          $('#enviar2').prop('disabled', false);
           return;
         }
       }
@@ -172,12 +172,19 @@ function realizar_Inscripcion(){
         return;
       }
 
+      let titulo = 'No se pudo completar';
+      if (resp && resp.code === 'FUERA_DE_HORARIO') titulo = 'Inscripción cerrada';
+      if (resp && resp.code === 'FUERA_DE_CUNDINAMARCA') titulo = 'Solo Cundinamarca';
+      if (resp && resp.code === 'VENTANA_ERROR') titulo = 'Validación no disponible';
+
       await Swal.fire({
-        icon: 'error',
-        title: 'No se pudo completar',
+        icon: 'warning',
+        title: titulo,
         text: (resp && resp.msg) ? resp.msg : 'Error al procesar la inscripción'
       });
-      $('#enviar').prop('disabled', false);
+
+      $('#enviar2').prop('disabled', false);
+
     },
 
     error: async function(jqXHR, textStatus, errorThrown){
@@ -197,7 +204,7 @@ function realizar_Inscripcion(){
           "</pre>"
       });
 
-      $('#enviar').prop('disabled', false);
+      $('#enviar2').prop('disabled', false);
     }
 
   });
