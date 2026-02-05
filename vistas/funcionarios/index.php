@@ -21,11 +21,41 @@ $contenido = '
       <div class="muted">Este módulo no usa OTP y no solicita adjuntos.</div>
     </div>
   </div>
-
-  <div class="d-grid gap-2 d-sm-flex mb-3">
-    <a class="btn btn-brand" href="/inscripciones/vistas/funcionarios/inscribir.php">Registrar inscripción</a>
-  </div>
 ';
+
+$gerente = $_SESSION["FUNC_USER"]["usuario"] ?? "";
+
+if ($gerente == "11798151") {
+  $contenido .= '
+    <div class="d-grid gap-2 d-sm-flex mb-3">
+        <button class="btn btn-brand" disabled title="No autorizado">Registrar inscripción</button>
+    </div>
+  ';
+} else {
+    $contenido .= '
+      <div class="d-grid gap-2 d-sm-flex mb-3">
+        <a class="btn btn-brand" href="/inscripciones/vistas/funcionarios/inscribir.php">Registrar inscripción</a>
+      </div>
+    ';    
+}
+
+
+$permitidos_reporte = ["39581549", "51589322", "11798151", "admin"];
+
+$func_user = $_SESSION["FUNC_USER"]["usuario"] ?? ""; // 
+
+if ($func_user !== "" && in_array((string)$func_user, $permitidos_reporte, true)) {
+  $contenido .= '
+    <div class="d-grid gap-2 d-sm-flex mb-3">
+        <a class="btn btn-outline-primary" href="/inscripciones/vistas/funcionarios/reporte_puntos.php">
+            Reporte por punto de atención</a>
+    </div>
+    <div class="d-grid gap-2 d-sm-flex mb-3">
+      <a class="btn btn-outline-primary" href="/inscripciones/vistas/funcionarios/reporte_insc_por_punto.php">
+            Detalle por punto de atención</a>
+    </div>
+  ';
+}
 
 if (!empty($_SESSION["FUNC_USER"]["usuario"]) && ($_SESSION["FUNC_USER"]["usuario"] === "admin" || $_SESSION["FUNC_USER"]["rol"] === "gestor" )) {
   $contenido .= '
