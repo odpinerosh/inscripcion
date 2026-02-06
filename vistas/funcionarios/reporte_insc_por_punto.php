@@ -25,18 +25,34 @@ if ($filtro_agencia !== "ALL" && !ctype_digit($filtro_agencia)) {
 
 if (isset($_GET["export"]) && $_GET["export"] == "1") {
 
-  // Conexión NUEVA para export (evitar conflictos con el stmt principal)
+  // Conexión para export a Excel
   $conx = Conectar::conexion();
 
   $sql_export = "
     SELECT
-      a.aso_Id       AS aso_Id,
-      a.aso_Nombre   AS aso_Nombre,
-      a.aso_Agen_Id  AS aso_Agen_Id,
-      a.aso_NAgencia AS aso_NAgencia,
-      IFNULL(a.aso_Delegado,0) AS aso_Delegado
-    FROM inscripcion i
-    JOIN asociados a ON a.aso_Id = i.ins_Part_Id
+        a.aso_Id       AS aso_Id,
+        a.aso_Nombre   AS aso_Nombre,
+        a.aso_Agen_Id  AS aso_Agen_Id,
+        a.aso_NAgencia AS aso_NAgencia,
+        IFNULL(a.aso_Delegado,0) AS aso_Delegado,
+        i.ins_Fecha AS ins_Fecha,
+        CASE
+          WHEN aud.aud_documento IS NOT NULL THEN 'PRESENCIAL'
+          ELSE 'VIRTUAL'
+        END AS ins_Tipo,
+        IFNULL(uf.nombre,'') AS func_nombre
+      FROM inscripcion i
+      JOIN asociados a ON a.aso_Id = i.ins_Part_Id
+      LEFT JOIN (
+        SELECT
+          t.aud_documento,
+          SUBSTRING_INDEX(GROUP_CONCAT(t.aud_usuario ORDER BY t.aud_fecha DESC), ',', 1) AS aud_usuario
+        FROM ins_auditoria t
+        GROUP BY t.aud_documento
+      ) aud
+        ON aud.aud_documento = i.ins_Part_Id
+      LEFT JOIN usuarios_funcionarios uf
+        ON uf.usuario = aud.aud_usuario
   ";
 
   if ($filtro_agencia !== "ALL") {
@@ -102,16 +118,14 @@ if (isset($_GET["export"]) && $_GET["export"] == "1") {
 
   // Escribir datos al CSV
   $out = fopen("php://output", "w");
-  fputcsv($out, ["CEDULA","NOMBRE","COD_PUNTO","NOMBRE_PUNTO","DELEGADO ACTUAL"], ";");
+  fputcsv($out, ["CEDULA","NOMBRE","COD_PUNTO","NOMBRE_PUNTO","DELEGADO ACTUAL", "FECHA INSCRIP.", "TIPO INSCRIP.", "FUNCIONARIO"], ";");
 
-  // SIN get_result()
-  $stmtx->bind_result($aso_Id, $aso_Nombre, $aso_Agen_Id, $aso_NAgencia, $aso_Delegado);
+  $stmtx->bind_result($aso_Id, $aso_Nombre, $aso_Agen_Id, $aso_NAgencia, $aso_Delegado, $ins_Fecha, $ins_Tipo, $func_nombre);
 
   // Recorrer resultados y escribir al CSV
   while ($stmtx->fetch()) {
-    $aso_Id_excel  = $aso_Id; 
     $delegado_txt = ((int)$aso_Delegado === 1) ? "SI" : "NO";
-    fputcsv($out, [$aso_Id_excel, $aso_Nombre, $aso_Agen_Id, $aso_NAgencia, $delegado_txt], ";");
+    fputcsv($out, [$aso_Id, $aso_Nombre, $aso_Agen_Id, $aso_NAgencia, $delegado_txt, $ins_Fecha, $ins_Tipo, $func_nombre], ";");
   }
 
   fclose($out);
