@@ -152,7 +152,8 @@ SELECT
   a.aso_NAgencia AS punto_atencion,
   a.aso_Id       AS cedula,
   a.aso_Nombre   AS nombre,
-  IFNULL(a.aso_Delegado,0) AS delegado
+  IFNULL(a.aso_Delegado,0) AS delegado,
+  i.ins_Ruta_Adj AS ruta_adj
 FROM inscripcion i
 JOIN asociados a ON a.aso_Id = i.ins_Part_Id
 ";
@@ -180,7 +181,7 @@ if (!$stmt->execute()) {
 }
 
 // === Consumir resultado del stmt (SIN get_result) y armar $data por agencia ===
-$stmt->bind_result($id_agencia, $punto_atencion, $cedula, $nombre, $delegado);
+$stmt->bind_result($id_agencia, $punto_atencion, $cedula, $nombre, $delegado, $ruta_adj);
 
 $data = [];
 while ($stmt->fetch()) {
@@ -191,10 +192,28 @@ while ($stmt->fetch()) {
     "punto_atencion" => $punto_atencion,
     "cedula"         => $cedula,
     "nombre"         => $nombre,
-    "delegado"       => $delegado
+    "delegado"       => $delegado,
+    "ruta_adj"       => $ruta_adj
   ];
 }
 $stmt->close();
+
+function url_soporte($path) {
+  $path = trim((string)$path);
+  if ($path === "" || $path === "null") return null;
+
+  $path = ltrim($path, "/");
+
+  if (strpos($path, "inscripciones/soportes/") === 0) {
+    return "/" . $path; 
+  }
+  if (strpos($path, "soportes/inscripciones/") === 0) {
+    return "/inscripciones/" . $path;
+  }
+
+  return "/inscripciones/" . $path;
+}
+
 
 // 4. Render
 $contenido = '
@@ -262,6 +281,8 @@ foreach ($data as $key => $rows) {
                 <th style="width:180px;">Cédula</th>
                 <th>Nombre</th>
                 <th style="width:160px;">Delegado actual</th>
+                <th style="width:160px;">Desc. Cédula</th>
+                <th style="width:160px;">Desc. Certificado</th>
               </tr>
             </thead>
             <tbody>
@@ -269,11 +290,32 @@ foreach ($data as $key => $rows) {
 
   foreach ($rows as $r) {
     $esDelegado = ((int)($r["delegado"] ?? 0) === 1) ? "SI" : "NO";
+    $adj = [];
+    if (!empty($r["ruta_adj"])) {
+      $tmp = json_decode($r["ruta_adj"], true);
+      if (is_array($tmp)) $adj = $tmp;
+    }
+
+    $uCedula = isset($adj["cedula"]) ? url_soporte($adj["cedula"]) : null;
+    $uCert   = isset($adj["certificado"]) ? url_soporte($adj["certificado"]) : null;
+
+    $linkCedula = ($uCedula)
+      ? '<a class="btn btn-sm btn-outline-primary" href="' . htmlspecialchars($uCedula) . '" target="_blank">Cédula</a>'
+      : '<span class="muted">No</span>';
+
+    $linkCert = ($uCert)
+      ? '<a class="btn btn-sm btn-outline-primary" href="' . htmlspecialchars($uCert) . '" target="_blank">Certificado</a>'
+      : '<span class="muted">No</span>';
+
+
     $contenido .= '
       <tr>
         <td>' . htmlspecialchars((string)($r["cedula"] ?? "")) . '</td>
         <td>' . htmlspecialchars((string)($r["nombre"] ?? "")) . '</td>
         <td>' . $esDelegado . '</td>
+        <td>' . $linkCedula . '</td>
+        <td>' . $linkCert . '</td>
+
       </tr>
     ';
   }
