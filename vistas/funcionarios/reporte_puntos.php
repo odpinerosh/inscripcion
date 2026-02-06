@@ -84,7 +84,7 @@ while ($r = $res->fetch_assoc()) $rows[] = $r;
 
 // Construcción HTML
 $contenido = '
-  <div class="d-grid gap-2 d-sm-flex mb-3">
+  <div class="d-flex flex-column flex-sm-row gap-2 mb-3">
     <a class="btn btn-outline-secondary" href="/inscripciones/vistas/funcionarios/index.php">Volver</a>
     <a class="btn btn-outline-primary" href="/inscripciones/vistas/funcionarios/reporte_puntos.php">Refrescar</a>
     <a class="btn btn-outline-success" href="/inscripciones/vistas/funcionarios/reporte_puntos.php?export=1">Exportar a Excel</a>

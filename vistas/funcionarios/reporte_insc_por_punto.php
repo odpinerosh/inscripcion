@@ -217,11 +217,10 @@ function url_soporte($path) {
 
 // 4. Render
 $contenido = '
-  <div class="d-grid gap-2 d-sm-flex mb-3">
+  <div class="d-flex flex-column flex-sm-row gap-2 mb-3">
     <a class="btn btn-outline-secondary" href="/inscripciones/vistas/funcionarios/index.php">Volver</a>
     <a class="btn btn-outline-primary" href="/inscripciones/vistas/funcionarios/reporte_insc_por_punto.php?agencia=' . urlencode($filtro_agencia) . '">Refrescar</a>
     <a class="btn btn-outline-success" href="/inscripciones/vistas/funcionarios/reporte_insc_por_punto.php?agencia=' . urlencode($filtro_agencia) . '&export=1">Exportar a Excel</a>
- 
   </div>
 
   <div class="card mb-3">
