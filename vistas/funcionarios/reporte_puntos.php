@@ -12,6 +12,49 @@ if ($func_user === "" || !in_array((string)$func_user, $permitidos_reporte, true
 
 $con = Conectar::conexion();
 
+// =========================
+// EXPORT CSV (Excel)
+// =========================
+if (isset($_GET["export"]) && $_GET["export"] == "1") {
+
+  $sql_export = "
+    SELECT
+      a.aso_Agen_Id  AS aso_Agen_Id,
+      a.aso_NAgencia AS aso_NAgencia,
+      COUNT(*)       AS total
+    FROM inscripcion i
+    JOIN asociados a ON a.aso_Id = i.ins_Part_Id
+    GROUP BY a.aso_Agen_Id, a.aso_NAgencia
+    ORDER BY a.aso_Agen_Id ASC
+  ";
+
+  $resx = $con->query($sql_export);
+  if (!$resx) {
+    http_response_code(500);
+    exit("Error en consulta export: " . $con->error);
+  }
+
+  $filename = "reporte_inscripciones_por_punto_" . date("Ymd_His") . ".csv";
+  header("Content-Type: text/csv; charset=UTF-8");
+  header("Content-Disposition: attachment; filename=\"$filename\"");
+  echo "\xEF\xBB\xBF"; // BOM para Excel (tildes)
+
+  $out = fopen("php://output", "w");
+  fputcsv($out, ["Cod_Punto", "Nombre_Punto", "Total_Inscrip."], ";");
+
+  while ($row = $resx->fetch_assoc()) {
+    fputcsv($out, [
+      $row["aso_Agen_Id"],
+      $row["aso_NAgencia"],
+      $row["total"]
+    ], ";");
+  }
+
+  fclose($out);
+  exit;
+}
+
+
 $titulo = "Reporte - Inscripciones por punto de atención";
 
 // Consulta (totales + estado)
@@ -44,6 +87,7 @@ $contenido = '
   <div class="d-grid gap-2 d-sm-flex mb-3">
     <a class="btn btn-outline-secondary" href="/inscripciones/vistas/funcionarios/index.php">Volver</a>
     <a class="btn btn-outline-primary" href="/inscripciones/vistas/funcionarios/reporte_puntos.php">Refrescar</a>
+    <a class="btn btn-outline-success" href="/inscripciones/vistas/funcionarios/reporte_puntos.php?export=1">Exportar a Excel</a>
   </div>
 
   <div class="card mb-3">
@@ -75,10 +119,8 @@ foreach ($rows as $r) {
   $not   = (int)$r["notificados"];
 
   $sum_total += $total;
-  $sum_sin   += $sin;
   $sum_pend  += $pend;
   $sum_not   += $not;
-  $sum_proc  += $proc;
 
   $contenido .= '
     <tr>

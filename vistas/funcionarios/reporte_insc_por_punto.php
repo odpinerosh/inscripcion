@@ -13,9 +13,114 @@ if ($func_user === "" || !in_array((string)$func_user, $permitidos, true)) {
 $con = Conectar::conexion();
 $titulo = "Reporte - Inscritos por punto (con delegado)";
 
-// =========================
-// 1) Cargar lista de puntos (solo los que tienen inscripciones)
-// =========================
+
+// 1. EXPORT CSV (Excel) - PLANO
+
+$filtro_agencia = $_GET["agencia"] ?? "ALL";
+$filtro_agencia = trim((string)$filtro_agencia);
+if ($filtro_agencia !== "ALL" && !ctype_digit($filtro_agencia)) {
+  $filtro_agencia = "ALL";
+}
+
+
+if (isset($_GET["export"]) && $_GET["export"] == "1") {
+
+  // Conexión NUEVA para export (evitar conflictos con el stmt principal)
+  $conx = Conectar::conexion();
+
+  $sql_export = "
+    SELECT
+      a.aso_Id       AS aso_Id,
+      a.aso_Nombre   AS aso_Nombre,
+      a.aso_Agen_Id  AS aso_Agen_Id,
+      a.aso_NAgencia AS aso_NAgencia,
+      IFNULL(a.aso_Delegado,0) AS aso_Delegado
+    FROM inscripcion i
+    JOIN asociados a ON a.aso_Id = i.ins_Part_Id
+  ";
+
+  if ($filtro_agencia !== "ALL") {
+    $sql_export .= " WHERE a.aso_Agen_Id = ? ";
+  }
+
+  $sql_export .= " ORDER BY a.aso_Agen_Id ASC, a.aso_Id ASC ";
+
+  // Preparar y ejecutar consulta export
+  $stmtx = $conx->prepare($sql_export);
+  if (!$stmtx) {
+    http_response_code(500);
+    exit("Error prepare export: " . $conx->error);
+  }
+
+  // Vincular parámetro si NO es ALL
+  if ($filtro_agencia !== "ALL") {
+    $idAg = (int)$filtro_agencia;
+    $stmtx->bind_param("i", $idAg);
+  }
+
+  // Ejecutar consulta export
+  if (!$stmtx->execute()) {
+    http_response_code(500);
+    exit("Error execute export: " . $stmtx->error);
+  }
+
+  // Función para generar una abreviatura del nombre de la agencia (para el filename)
+  function slug_agencia($s, $len = 5) {
+    $s = trim((string)$s);
+    $s = mb_strtoupper($s, 'UTF-8');
+    $s = iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $s);
+    $s = preg_replace('/[^A-Z0-9]/', '', $s);
+    return substr($s, 0, $len);
+  }
+
+
+  // Configurar headers para descarga CSV
+  if ($filtro_agencia === "ALL") {
+    $suf = "TODOS";
+  } else {
+      $idAg = (int)$filtro_agencia;
+
+      $stmtNom = $con->prepare("SELECT DISTINCT aso_NAgencia FROM asociados WHERE aso_Agen_Id = ? LIMIT 1");
+      if (!$stmtNom) { http_response_code(500); exit("Error prepare nom agencia: " . $con->error); }
+
+      $stmtNom->bind_param("i", $idAg);
+      $stmtNom->execute();
+      $stmtNom->bind_result($nomAg);
+      $stmtNom->fetch();
+      $stmtNom->close();
+
+      $sigla = slug_agencia($nomAg ?? "", 5);   // 5 letras: ATLAN
+      if ($sigla === "") $sigla = "AGENC";
+      $suf = $idAg . $sigla;                    // 112ATLAN
+  }
+
+  $filename = "reporte_inscritos_" . $suf . "_" . date("Ymd_His") . ".csv";
+
+  header("Content-Type: text/csv; charset=UTF-8");
+  header("Content-Disposition: attachment; filename=\"$filename\"");
+  echo "\xEF\xBB\xBF"; // BOM para Excel
+
+  // Escribir datos al CSV
+  $out = fopen("php://output", "w");
+  fputcsv($out, ["CEDULA","NOMBRE","COD_PUNTO","NOMBRE_PUNTO","DELEGADO ACTUAL"], ";");
+
+  // SIN get_result()
+  $stmtx->bind_result($aso_Id, $aso_Nombre, $aso_Agen_Id, $aso_NAgencia, $aso_Delegado);
+
+  // Recorrer resultados y escribir al CSV
+  while ($stmtx->fetch()) {
+    $aso_Id_excel  = $aso_Id; 
+    $delegado_txt = ((int)$aso_Delegado === 1) ? "SI" : "NO";
+    fputcsv($out, [$aso_Id_excel, $aso_Nombre, $aso_Agen_Id, $aso_NAgencia, $delegado_txt], ";");
+  }
+
+  fclose($out);
+  $stmtx->close();
+  $conx->close();
+  exit;
+}
+
+// 2. Cargar lista de puntos que tienen inscripciones
 $sql_agencias = "
 SELECT DISTINCT
   a.aso_Agen_Id  AS id_agencia,
@@ -32,21 +137,15 @@ if (!$res_ag) {
 
 $agencias = [];
 while ($r = $res_ag->fetch_assoc()) $agencias[] = $r;
+$res_ag->free(); // liberar memoria
 
-// =========================
-// 2) Leer filtro (GET)
-// =========================
-$filtro_agencia = $_GET["agencia"] ?? "ALL";
-$filtro_agencia = trim((string)$filtro_agencia);
 
-// Validar que si NO es ALL, sea numérico (por seguridad)
+// Si no es ALL, validar que el ID de agencia existe en la lista (evitar inyección y errores)
 if ($filtro_agencia !== "ALL" && !ctype_digit($filtro_agencia)) {
   $filtro_agencia = "ALL";
 }
 
-// =========================
-// 3) Consultar inscritos (con filtro opcional)
-// =========================
+// 3. Consultar inscritos 
 $sql = "
 SELECT
   a.aso_Agen_Id  AS id_agencia,
@@ -80,14 +179,13 @@ if (!$stmt->execute()) {
   exit("Error execute: " . $stmt->error);
 }
 
-
+// === Consumir resultado del stmt (SIN get_result) y armar $data por agencia ===
 $stmt->bind_result($id_agencia, $punto_atencion, $cedula, $nombre, $delegado);
 
 $data = [];
 while ($stmt->fetch()) {
   $key = ((string)$id_agencia) . "||" . ((string)$punto_atencion);
   if (!isset($data[$key])) $data[$key] = [];
-
   $data[$key][] = [
     "id_agencia"     => $id_agencia,
     "punto_atencion" => $punto_atencion,
@@ -96,16 +194,15 @@ while ($stmt->fetch()) {
     "delegado"       => $delegado
   ];
 }
-
 $stmt->close();
 
-// =========================
-// 4) Render
-// =========================
+// 4. Render
 $contenido = '
   <div class="d-grid gap-2 d-sm-flex mb-3">
     <a class="btn btn-outline-secondary" href="/inscripciones/vistas/funcionarios/index.php">Volver</a>
-    <a class="btn btn-outline-primary" href="/inscripciones/vistas/funcionarios/reporte_inscritos_por_agencia.php?agencia=' . urlencode($filtro_agencia) . '">Refrescar</a>
+    <a class="btn btn-outline-primary" href="/inscripciones/vistas/funcionarios/reporte_insc_por_punto.php?agencia=' . urlencode($filtro_agencia) . '">Refrescar</a>
+    <a class="btn btn-outline-success" href="/inscripciones/vistas/funcionarios/reporte_insc_por_punto.php?agencia=' . urlencode($filtro_agencia) . '&export=1">Exportar a Excel</a>
+ 
   </div>
 
   <div class="card mb-3">
@@ -148,7 +245,7 @@ if (empty($data)) {
   exit;
 }
 
-// Mostrar por agencia (bloques)
+// 5. Mostrar por agencia (bloques)
 foreach ($data as $key => $rows) {
   [$idAg, $nomAg] = explode("||", $key);
 
