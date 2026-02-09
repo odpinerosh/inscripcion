@@ -139,9 +139,17 @@ if ($accion === 2) {
 
   $accionVoto = ($decision === 'CONFIRMAR') ? 'CONFIRMADO' : 'CANCELADO';
 
-  $st4 = $conn->prepare("INSERT INTO elecciones_votos (aso_Id, jurado_usuario, accion) VALUES (?,?, ?)");
+  $st4 = $conn->prepare("INSERT INTO elecciones_votos (aso_Id, jurado_usuario, accion) VALUES (?, ?, ?)");
   $st4->bind_param("sss", $aso_Id, $jurado, $accionVoto);
-  $st4->execute();
+  if (!$st4->execute()) {
+    // Detectar error de duplicado (voto confirmado existente)
+    // Esto puede ocurrir si dos jurados intentan confirmar el voto del mismo asociado al mismo tiempo
+    // El código de error 1062 corresponde a "Duplicate entry" en MySQL
+    if ((int)$conn->errno === 1062 && $accionVoto === 'CONFIRMADO') {
+      respond(['ok' => false, 'msg' => 'El asociado ya registra voto confirmado.'], 409);
+    }
+  respond(['ok' => false, 'msg' => 'No fue posible registrar el voto.'], 500);
+  }
   $idVoto = $conn->insert_id;
 
   if ($decision === 'CANCELAR') {
