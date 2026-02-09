@@ -14,38 +14,83 @@ $jurado_nombre = $_SESSION['JUR_NOMBRE'] ?? $jurado;
   <meta charset="utf-8">
   <title>Registro de votantes - Jurado</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-
+  <link rel="icon" type="image/png" href="../../images/logoIColor.png">
   <!-- Bootstrap CSS  -->
     
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
 
   <!-- SweetAlert2  -->
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+  :root{
+      --brand:#0b2a4a;
+      --brand-2:#08a750;
+      --bg:#f5f6f8;
+    }
+    body {
+      background: #f8f9fa;
+    }
+
+    .jurados-logo {
+      max-width: 340px;   
+      width: 100%;
+      height: auto;
+      display: inline-block;
+    }
+
+    .muted{ color:#6b7280; font-size:.875rem; }
+    .brand-title{ font-weight: 800; color: var(--brand); }
+  </style> 
 </head>
 <body class="bg-light">
 <div class="container" style="max-width: 720px; padding-top: 30px;">
   <div class="card shadow-sm">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <div>
-            <b>Registro de Votantes (JURADO)</b>
-            <span class="float-right text-muted"><?php echo htmlspecialchars($jurado_nombre); ?></span>
-        </div>
+    <div class="card-header">
+      <div class="text-center py-2">
+        <img src="../../images/logoSloganColor.png"
+            alt="COOPTRAISS"
+            class="img-fluid jurados-logo">
+      </div>
+
+      <div>
+        <b>Registro de Votantes (JURADO)</b>
+      </div>
+
+      <div class="d-flex justify-content-between align-items-center mt-2">
+        <span class="text-muted">
+          Bienvenido, <b><?= htmlspecialchars($jurado_nombre) ?></b>
+        </span>
+
         <a class="btn btn-sm btn-outline-danger"
-            href="/inscripciones/controladores/jurados_logout.php"
-            onclick="return confirm('¿Desea cerrar sesión?');">
-            Salir
+          href="../../controladores/jurados_logout.php"
+          onclick="return confirm('¿Desea cerrar sesión?');">
+          Salir
         </a>
+      </div>
     </div>
+
     <div class="card-body">
 
       <div class="form-group">
-        <label for="aso_Id"><b>Cédula del asociado</b></label>
+        <label for="aso_Id"><b>Cédula del votante:</b></label>
         <input type="text" class="form-control form-control-lg" id="aso_Id" autocomplete="off" placeholder="Digite cédula y Enter">
       </div>
 
-      <button class="btn btn-primary btn-lg" id="btnConsultar">Consultar</button>
-      <button class="btn btn-success btn-lg" id="btnConfirmar" disabled>Registrar voto</button>
-      <button class="btn btn-outline-secondary btn-lg" id="btnLimpiar">Limpiar</button>
+      <div class="row">
+        
+        <div class="col-6 col-md-4 mb-2">
+          <button class="btn btn-primary btn-lg btn-block" id="btnConsultar">Consultar</button>
+        </div>
+
+        <div class="col-6 col-md-3 mb-2">
+          <button class="btn btn-outline-secondary btn-lg btn-block" id="btnLimpiar">Limpiar</button>
+        </div>
+
+        <div class="col-12 col-md-5 mb-2">
+          <button class="btn btn-success btn-lg btn-block" id="btnConfirmar" disabled>Registrar voto</button>
+        </div>
+      </div>
+
 
       <hr>
 
@@ -54,7 +99,7 @@ $jurado_nombre = $_SESSION['JUR_NOMBRE'] ?? $jurado;
       </div>
 
       <div class="small text-muted">
-        Nota: Si el asociado está <b>inhábil</b> o <b>ya votó</b>, el sistema no permitirá registrar voto.
+        Nota: Si el votante está <b>inhábil</b> o <b>ya votó</b>, el sistema no permitirá registrar voto.
       </div>
 
     </div>
@@ -119,7 +164,7 @@ $jurado_nombre = $_SESSION['JUR_NOMBRE'] ?? $jurado;
     setAlert('info', 'Consultando...');
 
     try {
-      const j = await postForm('/inscripciones/controladores/jurados_Controller.php', { accion: 1, aso_Id });
+      const j = await postForm('../../controladores/jurados_Controller.php', { accion: 1, aso_Id });
       estadoActual = j.estado || null;
       asoActual = j.aso || null;
 
@@ -171,7 +216,7 @@ $jurado_nombre = $_SESSION['JUR_NOMBRE'] ?? $jurado;
     if (!confirm.isConfirmed) {
       // Cancelación registrada
       try {
-        await postForm('/inscripciones/controladores/jurados_Controller.php', { accion: 2, aso_Id: asoActual.id, decision: 'CANCELAR' });
+        await postForm('/../../controladores/jurados_Controller.php', { accion: 2, aso_Id: asoActual.id, decision: 'CANCELAR' });
       } catch (e) {
         // no bloquea el flujo
       }
@@ -181,10 +226,10 @@ $jurado_nombre = $_SESSION['JUR_NOMBRE'] ?? $jurado;
 
     // Confirmado
     try {
-      const j = await postForm('/inscripciones/controladores/jurados_Controller.php', { accion: 2, aso_Id: asoActual.id, decision: 'CONFIRMAR' });
+      const j = await postForm('../../controladores/jurados_Controller.php', { accion: 2, aso_Id: asoActual.id, decision: 'CONFIRMAR' });
       await Swal.fire({
         icon: j.email_enviado ? 'success' : 'warning',
-        title: 'Listo',
+        title: 'Voto registrado',
         text: j.msg
       });
       limpiar();

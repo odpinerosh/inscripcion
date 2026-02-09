@@ -13,11 +13,37 @@ if (!empty($_SESSION['JUR_USER'])) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <style>
+    :root{
+      --brand:#0b2a4a;
+      --brand-2:#08a750;
+      --bg:#f5f6f8;
+    }
+    body {
+      background: #f8f9fa;
+    }
+
+    .jurados-logo {
+      max-width: 360px;   /* ajusta 320-420 según te guste */
+      width: 100%;
+      height: auto;
+      display: inline-block;
+    }
+
+    .muted{ color:#6b7280; font-size:.875rem; }
+    .brand-title{ font-weight: 800; color: var(--brand); }
+  </style>
 </head>
 <body class="bg-light">
 <div class="container" style="max-width: 520px; padding-top: 60px;">
   <div class="card shadow-sm">
-    <div class="card-header"><b>Ingreso Jurados</b></div>
+    <div class="card-header brand-title">
+        <div class="text-center p-3">
+            <img src="/inscripciones/images/logoSloganColor.png" alt="COOPTRAISS" class="img-fluid jurados-logo">
+        </div>
+        <div class="brand-title">Ingreso Jurados</div>
+        <div class="muted">Uso interno - Jurados Cooptraiss</div>
     <div class="card-body">
       <div class="form-group">
         <label>Usuario</label>

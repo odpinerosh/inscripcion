@@ -156,13 +156,50 @@ if ($accion === 2) {
     require_once __DIR__ . '/../config/cooptraiss_mail.php';
 
     $to = $db_correo;
-    $cc = ['elecciones2026@cooptraiss.com', 'notificaciones@solucionescooptraiss.com'];
+    //$cc = ['elecciones2026@cooptraiss.com', 'notificaciones@solucionescooptraiss.com'];
+    $cc = ['notificaciones@solucionescooptraiss.com'];
 
     $subject = "Registro de voto - Elecciones Cooptraiss 2026";
     $body = "
-      <p>Señor(a) <b>" . htmlspecialchars($db_nombre) . "</b>,</p>
-      <p>Le informamos que su voto fue registrado exitosamente el <b>" . date('Y-m-d H:i:s') . "</b>.</p>
-      <p>COOPTRAISS</p>
+			<div style='font-family: Arial, Helvetica, sans-serif; background:#f5f7f9; padding:24px;'>
+				<div style='max-width:640px; margin:0 auto; background:#ffffff; border-radius:12px; overflow:hidden; border:1px solid #e6e9ee;'>
+					<div style='background:#08a750; color:#fff; padding:18px 22px;'>
+					  <h2 style='margin:0; font-size:18px;'>Voto registrado</h2>
+					  <div style='opacity:.95; font-size:13px; margin-top:4px;'>Elección de Delegados<br>COOPTRAISS 2026-2030</div>
+					</div>
+
+					<div style='padding:20px 22px; color:#1f2a37;'>
+					  <div style='margin:0 0 12px 0; font-size:14px;'>
+    				  <p>Apreciado(a) asociado(a),</p><p><b>" . htmlspecialchars($db_nombre) . "</b></p>
+    					<p>Su voto ha sido <b>registrado exitosamente</b>.</p>
+						</div>
+
+            <table style='width:100%; border-collapse:collapse; font-size:14px; margin:12px 0 18px 0;'>
+              <tr>
+                <td style='padding:8px 10px; background:#f3f4f6; width:38%; border:1px solid #e5e7eb;'><b>Documento</b></td>
+                <td style='padding:8px 10px; border:1px solid #e5e7eb;'>". $aso_Id ."</td>
+              </tr>
+              <tr>
+                <td style='padding:8px 10px; background:#f3f4f6; border:1px solid #e5e7eb;'><b>Fecha y hora</b></td>
+                <td style='padding:8px 10px; border:1px solid #e5e7eb;'>". date('Y-m-d H:i:s') ."</td>
+              </tr>
+            </table>
+
+            <p style='margin:16px 0 0 0; font-size:13px; color:#374151;'>
+              Si requiere soporte escriba al correo <b>elecciones2026@cooptraiss.com</b>.
+            </p>
+
+            <p style='margin:18px 0 0 0; font-size:13px; color:#6b7280;'>
+              Cordialmente,<br>
+              <b>COOPTRAISS</b>
+            </p>
+					</div>
+
+					<div style='padding:12px 22px; background:#f9fafb; color:#6b7280; font-size:12px; border-top:1px solid #e6e9ee;'>
+						Por favor no responda este mensaje; se envía desde una cuenta de notificaciones automáticas.
+					</div>
+				</div>
+			</div>
     ";
 
     send_mail($to, $subject, $body, $cc);
