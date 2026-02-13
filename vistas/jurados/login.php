@@ -11,6 +11,7 @@ if (!empty($_SESSION['JUR_USER'])) {
   <meta charset="utf-8">
   <title>Login Jurados - Elecciones 2026</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/png" href="../../images/logoIColor.png">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
@@ -25,7 +26,7 @@ if (!empty($_SESSION['JUR_USER'])) {
     }
 
     .jurados-logo {
-      max-width: 360px;   /* ajusta 320-420 según te guste */
+      max-width: 360px;  
       width: 100%;
       height: auto;
       display: inline-block;
@@ -44,7 +45,13 @@ if (!empty($_SESSION['JUR_USER'])) {
         </div>
         <div class="brand-title">Ingreso Jurados</div>
         <div class="muted">Uso interno - Jurados Cooptraiss</div>
+    </div>
     <div class="card-body">
+        <?php if (isset($_GET['timeout']) && $_GET['timeout'] == '1'): ?>
+            <div class="alert alert-warning">
+                Su sesión expiró por inactividad (15 minutos). Inicie sesión nuevamente.
+            </div>
+        <?php endif; ?>
       <div class="form-group">
         <label>Usuario</label>
         <input id="usuario" class="form-control" autocomplete="username">
@@ -70,12 +77,12 @@ if (!empty($_SESSION['JUR_USER'])) {
 
     const r = await fetch(url, { method: 'POST', body: fd });
 
-    const text = await r.text(); // <- lee SIEMPRE como texto primero
+    const text = await r.text(); 
     let j = null;
 
     try { j = JSON.parse(text); }
     catch (e) {
-      // Si no es JSON, mostramos el texto crudo (útil para ver el error PHP)
+      
       throw new Error(text ? text.substring(0, 300) : 'Respuesta vacía del servidor.');
     }
 

@@ -4,9 +4,33 @@ header('Content-Type: application/json; charset=utf-8');
 
 if (empty($_SESSION['JUR_USER'])) {
   http_response_code(401);
-  echo json_encode(['ok' => false, 'msg' => 'No autorizado.']);
+  echo json_encode([
+      'ok' => false,
+      'code' => 'SESSION_TIMEOUT',
+      'msg' => 'Sesión expirada por inactividad (15 minutos). Inicie sesión nuevamente.',
+      'redirect' => '/inscripciones/vistas/jurados/login.php?timeout=1'
+  ]);
   exit;
 }
+
+// === Timeout por INACTIVIDAD (15 min) ===
+$now = time();
+$ttl = 15 * 60;
+
+if (!isset($_SESSION['JUR_LAST_ACTIVITY'])) {
+  $_SESSION['JUR_LAST_ACTIVITY'] = $now;
+}
+
+if (($now - (int)$_SESSION['JUR_LAST_ACTIVITY']) > $ttl) {
+  session_unset();
+  session_destroy();
+  header('Location: /inscripciones/vistas/jurados/login.php?timeout=1');
+  exit;
+}
+
+// Renovar actividad
+$_SESSION['JUR_LAST_ACTIVITY'] = $now;
+
 $jurado = $_SESSION['JUR_USER'];
 
 require_once __DIR__ . '/../config/conecta.php';
@@ -215,26 +239,26 @@ if ($accion === 2) {
   $emailOk = 0;
   $emailErr = null;
 
-  try {
+  /*try {
     require_once __DIR__ . '/../config/cooptraiss_mail.php';
 
     $to = $db_correo;
     //$cc = ['elecciones2026@cooptraiss.com', 'notificaciones@solucionescooptraiss.com'];
     $cc = ['notificaciones@solucionescooptraiss.com'];
 
-    $subject = "Registro de voto - Elecciones Cooptraiss 2026";
+    $subject = "ESTO ES UNA PRUEBA - Registro de voto - Elecciones Cooptraiss 2026 - ESTO ES UNA PRUEBA";
     $body = "
 			<div style='font-family: Arial, Helvetica, sans-serif; background:#f5f7f9; padding:24px;'>
 				<div style='max-width:640px; margin:0 auto; background:#ffffff; border-radius:12px; overflow:hidden; border:1px solid #e6e9ee;'>
 					<div style='background:#08a750; color:#fff; padding:18px 22px;'>
-					  <h2 style='margin:0; font-size:18px;'>Voto registrado</h2>
-					  <div style='opacity:.95; font-size:13px; margin-top:4px;'>Elección de Delegados<br>COOPTRAISS 2026-2030</div>
+					  <h2 style='margin:0; font-size:18px;'>ESTO ES UNA PRUEBA - Voto registrado - ESTO ES UNA PRUEBA</h2>
+					  <div style='opacity:.95; font-size:13px; margin-top:4px;'>Elección de Delegados<br>ESTO ES UNA PRUEBA - COOPTRAISS 2026-2030 - ESTO ES UNA PRUEBA</div>
 					</div>
 
 					<div style='padding:20px 22px; color:#1f2a37;'>
 					  <div style='margin:0 0 12px 0; font-size:14px;'>
     				  <p>Apreciado(a) asociado(a),</p><p><b>" . htmlspecialchars($db_nombre) . "</b></p>
-    					<p>Su voto ha sido <b>registrado exitosamente</b>.</p>
+    					<!--p>Su voto ha sido <b>registrado exitosamente</b>.</p -->
 						</div>
 
             <table style='width:100%; border-collapse:collapse; font-size:14px; margin:12px 0 18px 0;'>
@@ -259,7 +283,7 @@ if ($accion === 2) {
 					</div>
 
 					<div style='padding:12px 22px; background:#f9fafb; color:#6b7280; font-size:12px; border-top:1px solid #e6e9ee;'>
-						Por favor no responda este mensaje; se envía desde una cuenta de notificaciones automáticas.
+						Por favor no responda este mensaje;--ESTO ES UNA PRUEBA-- se envía desde una cuenta de notificaciones automáticas.
 					</div>
 				</div>
 			</div>
@@ -270,15 +294,17 @@ if ($accion === 2) {
   } catch (Throwable $e) {
     $emailOk = 0;
     $emailErr = substr($e->getMessage(), 0, 255);
-  }
+  }*/
 
+  $emailOk = 0;
+  $emailErr = 'No se están enviando correos por decisión gerencial';
   $st5 = $conn->prepare("UPDATE elecciones_votos SET email_enviado = ?, email_error = ? WHERE id = ?");
   $st5->bind_param("isi", $emailOk, $emailErr, $idVoto);
   $st5->execute();
 
   respond([
     'ok' => true,
-    'msg' => $emailOk ? 'Voto registrado y notificación enviada.' : 'Voto registrado. Error enviando correo.',
+    'msg' => $emailOk ? 'Voto registrado.' : 'Voto registrado. ',
     'email_enviado' => $emailOk
   ]);
 }

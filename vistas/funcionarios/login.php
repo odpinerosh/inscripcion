@@ -1,7 +1,7 @@
 <?php
 if (session_status() === PHP_SESSION_NONE) session_start();
 
-// Si ya está logueado, lo mandamos al módulo
+// Si ya está logueado pasa al módulo
 if (!empty($_SESSION['FUNC_USER']['usuario'])) {
   header("Location: /inscripciones/vistas/funcionarios/index.php");
   exit;
@@ -24,6 +24,7 @@ if ($e === '2') $mensaje = 'Usuario bloqueado temporalmente por intentos fallido
   <!-- Bootstrap -->
   <link rel="stylesheet" href="/inscripciones/assets/vendor/bootstrap/css/bootstrap.min.css">
   
+
   <style>
     :root{
       --brand:#0b2a4a;
@@ -93,6 +94,6 @@ if ($e === '2') $mensaje = 'Usuario bloqueado temporalmente por intentos fallido
     </div>
   </div>
 
-  <script src="/inscripciones/assets/vendor/bootstrap/js/bootstrap.bundle.js"></script>
+  
 </body>
 </html>

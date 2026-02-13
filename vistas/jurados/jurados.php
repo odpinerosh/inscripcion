@@ -4,6 +4,25 @@ if (empty($_SESSION['JUR_USER'])) {
   header('Location: /inscripciones/vistas/jurados/login.php');
   exit;
 }
+
+// === Timeout por INACTIVIDAD (15 min) ===
+$now = time();
+$ttl = 15 * 60;
+
+if (!isset($_SESSION['JUR_LAST_ACTIVITY'])) {
+  $_SESSION['JUR_LAST_ACTIVITY'] = $now;
+}
+
+if (($now - (int)$_SESSION['JUR_LAST_ACTIVITY']) > $ttl) {
+  session_unset();
+  session_destroy();
+  header('Location: /inscripciones/vistas/jurados/login.php?timeout=1');
+  exit;
+}
+
+// Renovar actividad
+$_SESSION['JUR_LAST_ACTIVITY'] = $now;
+
 $jurado = $_SESSION['JUR_USER'];
 $jurado_nombre = $_SESSION['JUR_NOMBRE'] ?? $jurado;
 ?>
@@ -161,8 +180,24 @@ $jurado_nombre = $_SESSION['JUR_NOMBRE'] ?? $jurado;
       throw new Error(text ? text.substring(0, 300) : 'Respuesta vacía del servidor.');
     }
 
-    if (!r.ok) throw new Error(j?.msg || 'Error');
+    if (!r.ok) {
+      // Si es 401, redirigir siempre (timeout o no autorizado)
+      if (r.status === 401) {
+        window.location.href = '/inscripciones/vistas/jurados/login.php?timeout=1';
+        return; // corta el flujo
+      }
+
+      // Si el backend manda redirect explícito, úsalo
+      if (j?.redirect) {
+        window.location.href = j.redirect;
+        return;
+      }
+
+      throw new Error(j?.msg || 'Error');
+    }
+
     return j;
+
   }
 
 
@@ -202,7 +237,7 @@ $jurado_nombre = $_SESSION['JUR_NOMBRE'] ?? $jurado;
 
       if (estadoActual === 'HABIL') {
         const punto = asoActual?.punto ? `<br>${asoActual.punto}` : '';
-        setAlert('success', `✅ ${j.msg}${punto}<br><b>${asoActual?.nombre || ''}</b><br>${asoActual?.correo || ''}`);
+        setAlert('success', `✅ ${j.msg}${punto}<br><b>${asoActual?.nombre || ''}</b><br>`);
         btnConfirmar.disabled = false;
         return;
       }
@@ -250,7 +285,7 @@ $jurado_nombre = $_SESSION['JUR_NOMBRE'] ?? $jurado;
     const confirm = await Swal.fire({
       icon: 'question',
       title: '¿Registrar voto?',
-      html: `<b>${asoActual.nombre}</b><br>${asoActual.id}<br><small>${asoActual.correo || ''}</small>`,
+      html: `<b>${asoActual.nombre}</b><br>${asoActual.id}<br><small></small>`,
       showCancelButton: true,
       confirmButtonText: 'Sí, registrar',
       cancelButtonText: 'Cancelar',
