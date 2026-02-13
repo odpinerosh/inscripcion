@@ -101,6 +101,11 @@ $jurado_nombre = $_SESSION['JUR_NOMBRE'] ?? $jurado;
       <div class="small text-muted">
         Nota: Si el votante está <b>inhábil</b> o <b>ya votó</b>, el sistema no permitirá registrar voto.
       </div>
+      <div id="progreso-urna" class="alert alert-info mt-3 mb-0" style="display:none;">
+        <b>Progreso:</b>
+        Inscritos <span id="prog-inscritos">0</span> de <span id="prog-total">0</span> — Faltan <span id="prog-faltan">0</span>
+      </div>
+
 
     </div>
   </div>
@@ -108,16 +113,25 @@ $jurado_nombre = $_SESSION['JUR_NOMBRE'] ?? $jurado;
 
 <script>
 (() => {
-  const $ = (id) => document.getElementById(id);
+  const $$ = (id) => document.getElementById(id);
 
-  const input = $('aso_Id');
-  const btnConsultar = $('btnConsultar');
-  const btnConfirmar = $('btnConfirmar');
-  const btnLimpiar = $('btnLimpiar');
-  const resultado = $('resultado');
+  const input = $$('aso_Id');
+  const btnConsultar = $$('btnConsultar');
+  const btnConfirmar = $$('btnConfirmar');
+  const btnLimpiar = $$('btnLimpiar');
+  const resultado = $$('resultado');
 
   let estadoActual = null; // HABIL | INHABIL | NO_EXISTE | YA_VOTO
   let asoActual = null;    // {id,nombre,correo}
+
+  function blurActivo() {
+    try {
+      if (document.activeElement && typeof document.activeElement.blur === 'function') {
+        document.activeElement.blur();
+      }
+    } catch (e) {}
+  }
+
 
   function setAlert(type, html) {
     resultado.className = 'alert alert-' + type;
@@ -187,10 +201,21 @@ $jurado_nombre = $_SESSION['JUR_NOMBRE'] ?? $jurado;
       }
 
       if (estadoActual === 'HABIL') {
-        setAlert('success', `✅ ${j.msg}<br><b>${asoActual?.nombre || ''}</b><br>${asoActual?.correo || ''}`);
+        const punto = asoActual?.punto ? `<br>${asoActual.punto}` : '';
+        setAlert('success', `✅ ${j.msg}${punto}<br><b>${asoActual?.nombre || ''}</b><br>${asoActual?.correo || ''}`);
         btnConfirmar.disabled = false;
         return;
       }
+
+
+      if (estadoActual === 'FUERA_URNA') {
+        blurActivo();
+        await Swal.fire({ icon: 'warning', title: 'Fuera de su urna', text: j.msg });
+        btnConfirmar.disabled = true;
+        setAlert('warning', '⚠️ ' + j.msg);
+        return;
+      }
+
 
       setAlert('secondary', j.msg || 'Sin estado.');
     } catch (e) {
@@ -198,11 +223,30 @@ $jurado_nombre = $_SESSION['JUR_NOMBRE'] ?? $jurado;
     }
   }
 
+  async function cargarProgresoUrna() {
+    try {
+      const r = await fetch('../../controladores/jurados_Controller.php?accion=3', { method: 'GET' });
+      const text = await r.text();
+      let j = null;
+      try { j = JSON.parse(text); } catch (e) { return; }
+      if (!j || !j.ok) return;
+
+      document.getElementById('prog-inscritos').textContent = j.inscritos;
+      document.getElementById('prog-total').textContent = j.total;
+      document.getElementById('prog-faltan').textContent = j.faltan;
+      document.getElementById('progreso-urna').style.display = '';
+    } catch (e) {
+      // si falla, no mostramos el div
+    }
+  }
+
+
+
   async function registrarVoto() {
     if (estadoActual !== 'HABIL' || !asoActual?.id) {
       return;
     }
-
+    blurActivo();
     const confirm = await Swal.fire({
       icon: 'question',
       title: '¿Registrar voto?',
@@ -227,13 +271,16 @@ $jurado_nombre = $_SESSION['JUR_NOMBRE'] ?? $jurado;
     // Confirmado
     try {
       const j = await postForm('../../controladores/jurados_Controller.php', { accion: 2, aso_Id: asoActual.id, decision: 'CONFIRMAR' });
+      blurActivo();
       await Swal.fire({
         icon: j.email_enviado ? 'success' : 'warning',
         title: 'Voto registrado',
         text: j.msg
       });
+      cargarProgresoUrna();
       limpiar();
     } catch (e) {
+      blurActivo();
       await Swal.fire({ icon: 'error', title: 'Error', text: e.message });
     }
   }
@@ -250,6 +297,7 @@ $jurado_nombre = $_SESSION['JUR_NOMBRE'] ?? $jurado;
   });
 
   limpiar();
+  cargarProgresoUrna();
 })();
 </script>
 </body>

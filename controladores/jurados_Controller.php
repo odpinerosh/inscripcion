@@ -23,6 +23,24 @@ function clean_id($v) {
   return preg_replace('/\D+/', '', $v);
 }
 
+function jurado_puede_ver_asociado($conn, $jurado_user, $aso_Id) {
+  
+  // Valida que el asociado esté en alguna urna asignada al jurado
+  $sql = "SELECT 1
+          FROM jurados_urnas ju
+          JOIN urnas_asociados ua ON ua.urna_Id = ju.urna_Id
+          WHERE ju.jurado_usuario = ?
+            AND ua.aso_Id = ?
+          LIMIT 1";
+  $st = $conn->prepare($sql);
+  if (!$st) return false;
+  $st->bind_param("ss", $jurado_user, $aso_Id);
+  $st->execute();
+  $st->store_result();
+  return ($st->num_rows > 0);
+}
+
+
 $accion = isset($_REQUEST['accion']) ? (int)$_REQUEST['accion'] : 0;
 
 // =======================
@@ -35,7 +53,9 @@ if ($accion === 1) {
   }
 
   // Buscar asociado (SIN get_result)
-  $st = $conn->prepare("SELECT aso_Id, aso_Nombre, aso_Correo, aso_Inhabil FROM asociados WHERE aso_Id = ? LIMIT 1");
+  $st = $conn->prepare("SELECT aso_Id, aso_Nombre, aso_Correo, aso_Inhabil, a.aso_Agen_Id, p.punto_Nombre AS punto_nombre 
+                          FROM asociados a LEFT JOIN ptos_atencion p ON p.punto_Id = a.aso_Agen_Id
+                         WHERE a.aso_Id = ? LIMIT 1");
   if (!$st) respond(['ok' => false, 'msg' => 'Error preparando consulta.'], 500);
 
   $st->bind_param("s", $aso_Id);
@@ -51,13 +71,14 @@ if ($accion === 1) {
     respond(['ok' => true, 'estado' => 'NO_EXISTE', 'msg' => 'El asociado no está registrado.']);
   }
 
-  $st->bind_result($db_id, $db_nombre, $db_correo, $db_inhabil);
+  $st->bind_result($db_id, $db_nombre, $db_correo, $db_inhabil, $db_agen_id, $db_punto_nombre);
   $st->fetch();
 
   $aso = [
     'id' => $db_id,
     'nombre' => $db_nombre,
-    'correo' => $db_correo
+    'correo' => $db_correo,
+    'punto' => $db_punto_nombre ?: ('Punto ' . $db_agen_id)
   ];
 
   if ((int)$db_inhabil === 1) {
@@ -68,6 +89,26 @@ if ($accion === 1) {
 
     respond(['ok' => true, 'estado' => 'INHABIL', 'msg' => 'Asociado INHÁBIL. No puede votar.', 'aso' => $aso]);
   }
+
+  // === VALIDACION DE URNA DEL JURADO ===
+  if (!jurado_puede_ver_asociado($conn, $jurado, $aso_Id)) {
+
+    // Registrar consulta FUERA_URNA en auditoría 
+    $motivo = "FUERA_URNA: no pertenece a urnas asignadas al jurado";
+    $st2 = $conn->prepare("INSERT INTO elecciones_consultas (aso_Id, jurado_usuario, resultado, motivo) VALUES (?,?, 'FUERA_URNA', ?)");
+    if ($st2) {
+      $st2->bind_param("sss", $aso_Id, $jurado, $motivo);
+      $st2->execute();
+    }
+
+    respond([
+      'ok' => true,
+      'estado' => 'FUERA_URNA',
+      'msg' => 'Este asociado NO está asignado a su mesa/urna.',
+      'aso' => $aso
+    ]);
+  }
+
 
   // Validar si ya votó 
   $st3 = $conn->prepare("SELECT id, creado_en FROM elecciones_votos WHERE aso_Id = ? AND accion='CONFIRMADO' LIMIT 1");
@@ -138,6 +179,20 @@ if ($accion === 2) {
   }
 
   $accionVoto = ($decision === 'CONFIRMAR') ? 'CONFIRMADO' : 'CANCELADO';
+
+  if (!jurado_puede_ver_asociado($conn, $jurado, $aso_Id)) {
+
+    // (Opcional) Auditoría del intento de registrar fuera de urna
+    $motivo = "INTENTO_REGISTRO_FUERA_URNA: jurado=" . $jurado;
+    $stA = $conn->prepare("INSERT INTO elecciones_consultas (aso_Id, jurado_usuario, resultado, motivo) VALUES (?,?, 'REGISTRO_DENEGADO', ?)");
+    if ($stA) {
+      $stA->bind_param("sss", $aso_Id, $jurado, $motivo);
+      $stA->execute();
+    }
+
+    respond(['ok' => false, 'msg' => 'No autorizado: asociado fuera de su urna/mesa.'], 403);
+  }
+
 
   $st4 = $conn->prepare("INSERT INTO elecciones_votos (aso_Id, jurado_usuario, accion) VALUES (?, ?, ?)");
   $st4->bind_param("sss", $aso_Id, $jurado, $accionVoto);
@@ -227,5 +282,60 @@ if ($accion === 2) {
     'email_enviado' => $emailOk
   ]);
 }
+
+// ===========================================
+// ACCION 3: PROGRESO DE INSCRIPCIÓN DE JURADO
+// ===========================================
+
+if ($accion === 3) {
+  // Progreso de inscripción del jurado: inscritos vs total de su(s) urna(s)
+
+  while ($conn->more_results() && $conn->next_result()) {
+    if ($res = $conn->use_result()) { $res->free(); }
+  }
+
+  // Total hábiles en urnas asignadas al jurado
+  $sqlTotal = "
+    SELECT COUNT(DISTINCT ua.aso_Id) AS total_urna
+    FROM jurados_urnas ju
+    JOIN urnas_asociados ua ON ua.urna_Id = ju.urna_Id
+    JOIN asociados a ON a.aso_Id = ua.aso_Id
+    WHERE ju.jurado_usuario = ?
+      AND a.aso_Inhabil = 0
+  ";
+  $total = 0;
+  $stT = $conn->prepare($sqlTotal);
+  if (!$stT) respond(['ok' => false, 'msg' => 'Error preparando total.'], 500);
+
+  $stT->bind_param("s", $jurado);
+  $stT->execute();
+  $stT->bind_result($total);
+  $stT->fetch();
+  $stT->close();
+
+  // Inscritos por ese jurado
+  $sqlIns = "SELECT COUNT(*) AS inscritos FROM elecciones_votos WHERE jurado_usuario = ?";
+  $inscritos = 0;
+  $stI = $conn->prepare($sqlIns);
+  if (!$stI) respond(['ok' => false, 'msg' => 'Error preparando inscritos.'], 500);
+
+  $stI->bind_param("s", $jurado);
+  $stI->execute();
+  $stI->bind_result($inscritos);
+  $stI->fetch();
+  $stI->close();
+
+  $faltan = max(0, (int)$total - (int)$inscritos);
+
+  respond([
+    'ok' => true,
+    'total' => (int)$total,
+    'inscritos' => (int)$inscritos,
+    'faltan' => (int)$faltan
+  ]);
+}
+
+
+
 
 respond(['ok' => false, 'msg' => 'Acción no válida.'], 400);
