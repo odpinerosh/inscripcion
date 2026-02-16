@@ -31,7 +31,6 @@ if (!$st) {
 $st->bind_param("s", $usuario);
 $st->execute();
 
-// Bind manual (sin get_result)
 $st->store_result();
 
 if ($st->num_rows === 0) {
@@ -50,12 +49,21 @@ if (!password_verify($pass, $db_hash)) {
 }
 
 $rol = strtolower(trim((string)$db_rol));
-if (!in_array($rol, ['jurado', 'superadmin'], true)) {
+$user = trim((string)$db_user);
+$permitidos_reportes = ['admin', '39581549', '51589322', '11798151'];
+$esJuradoOSuper = in_array($rol, ['jurado', 'superadmin'], true);
+$esReporte      = in_array($user, $permitidos_reportes, true);
+
+if (!$esJuradoOSuper && !$esReporte) {
   respond(['ok' => false, 'msg' => 'No autorizado para el módulo de jurados.'], 403);
 }
 
-$_SESSION['JUR_USER']   = $db_user;
+$redirect = $esReporte
+  ? '/inscripciones/vistas/jurados/reportes.php'
+  : '/inscripciones/vistas/jurados/jurados.php';
+
+$_SESSION['JUR_USER']   = $user;      
 $_SESSION['JUR_NOMBRE'] = $db_nombre;
 $_SESSION['JUR_ROL']    = $rol;
 
-respond(['ok' => true, 'msg' => 'Ingreso correcto.']);
+respond(['ok' => true, 'msg' => 'Ingreso correcto.', 'redirect' => $redirect]);

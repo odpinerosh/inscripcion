@@ -1,10 +1,24 @@
 <?php
-session_start();
-if (!empty($_SESSION['JUR_USER'])) {
-  header('Location: /inscripciones/vistas/jurados/jurados.php');
-  exit;
-}
+  session_start();
+
+  header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+  header('Cache-Control: post-check=0, pre-check=0', false);
+  header('Pragma: no-cache');
+  header('Expires: 0');
+
+  // Solo borrar sesión si viene explícitamente de logout/timeout
+  if (isset($_GET['logout']) || isset($_GET['timeout'])) {
+    session_unset();
+    session_destroy();
+    session_start(); // reabre sesión limpia para la página
+  }
+
+  if (!empty($_SESSION['JUR_USER'])) {
+    header('Location: /inscripciones/vistas/jurados/jurados.php');
+    exit;
+  }
 ?>
+
 <!doctype html>
 <html lang="es">
 <head>
@@ -94,11 +108,11 @@ if (!empty($_SESSION['JUR_USER'])) {
   async function login() {
     btn.disabled = true;
     try {
-      await postForm('/inscripciones/controladores/jurados_login_Controller.php', {
+      const j = await postForm('/inscripciones/controladores/jurados_login_Controller.php', {
         usuario: usuario.value.trim(),
         pass: pass.value
       });
-      window.location.href = '/inscripciones/vistas/jurados/jurados.php';
+      window.location.href = j?.redirect || '/inscripciones/vistas/jurados/jurados.php';
     } catch (e) {
       await Swal.fire({ icon: 'error', title: 'No fue posible ingresar', text: e.message });
     } finally {

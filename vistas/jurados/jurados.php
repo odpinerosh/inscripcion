@@ -1,30 +1,50 @@
 <?php
-session_start();
-if (empty($_SESSION['JUR_USER'])) {
-  header('Location: /inscripciones/vistas/jurados/login.php');
-  exit;
-}
+  session_start();
+  header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+  header('Cache-Control: post-check=0, pre-check=0', false);
+  header('Pragma: no-cache');
+  header('Expires: 0');
+  if (empty($_SESSION['JUR_USER'])) {
+    header('Location: /inscripciones/vistas/jurados/login.php');
+    exit;
+  }
 
-// === Timeout por INACTIVIDAD (15 min) ===
-$now = time();
-$ttl = 15 * 60;
+  $rol  = strtolower(trim((string)($_SESSION['JUR_ROL'] ?? '')));
+  $user = strtolower(trim((string)($_SESSION['JUR_USER'] ?? '')));
 
-if (!isset($_SESSION['JUR_LAST_ACTIVITY'])) {
+  $permitidos_reportes = ['admin','39581549','51589322','11798151'];
+
+  if (!in_array($rol, ['jurado','superadmin'], true)) {
+    // si es usuario de reportes, mandarlo a reportes.php
+    if (in_array($user, $permitidos_reportes, true)) {
+      header('Location: /inscripciones/vistas/jurados/reportes.php');
+      exit;
+    }
+    // cualquier otro rol: fuera
+    header('Location: /inscripciones/vistas/jurados/login.php?timeout=1');
+    exit;
+  }
+
+  // === Timeout por INACTIVIDAD (15 min) ===
+  $now = time();
+  $ttl = 15 * 60;
+
+  if (!isset($_SESSION['JUR_LAST_ACTIVITY'])) {
+    $_SESSION['JUR_LAST_ACTIVITY'] = $now;
+  }
+
+  if (($now - (int)$_SESSION['JUR_LAST_ACTIVITY']) > $ttl) {
+    session_unset();
+    session_destroy();
+    header('Location: /inscripciones/vistas/jurados/login.php?timeout=1');
+    exit;
+  }
+
+  // Renovar actividad
   $_SESSION['JUR_LAST_ACTIVITY'] = $now;
-}
 
-if (($now - (int)$_SESSION['JUR_LAST_ACTIVITY']) > $ttl) {
-  session_unset();
-  session_destroy();
-  header('Location: /inscripciones/vistas/jurados/login.php?timeout=1');
-  exit;
-}
-
-// Renovar actividad
-$_SESSION['JUR_LAST_ACTIVITY'] = $now;
-
-$jurado = $_SESSION['JUR_USER'];
-$jurado_nombre = $_SESSION['JUR_NOMBRE'] ?? $jurado;
+  $jurado = $_SESSION['JUR_USER'];
+  $jurado_nombre = $_SESSION['JUR_NOMBRE'] ?? $jurado;
 ?>
 
 <!doctype html>
@@ -136,335 +156,340 @@ $jurado_nombre = $_SESSION['JUR_NOMBRE'] ?? $jurado;
 </div>
 
 <script>
-(() => {
-  const $$ = (id) => document.getElementById(id);
+  (() => {
+    const $$ = (id) => document.getElementById(id);
 
-  const input = $$('aso_Id');
-  const btnConsultar = $$('btnConsultar');
-  const btnConfirmar = $$('btnConfirmar');
-  const btnLimpiar = $$('btnLimpiar');
-  const resultado = $$('resultado');
-  const btnAnular = $$('btnAnular');
-
-
-  let estadoActual = null; // HABIL | INHABIL | NO_EXISTE | YA_VOTO
-  let asoActual = null;    // {id,nombre,correo}
-  let cacheUrnasJurado = null; 
-  let cacheUrnasTs = 0;
-
-  function blurActivo() {
-    try {
-      if (document.activeElement && typeof document.activeElement.blur === 'function') {
-        document.activeElement.blur();
-      }
-    } catch (e) {}
-  }
+    const input = $$('aso_Id');
+    const btnConsultar = $$('btnConsultar');
+    const btnConfirmar = $$('btnConfirmar');
+    const btnLimpiar = $$('btnLimpiar');
+    const resultado = $$('resultado');
+    const btnAnular = $$('btnAnular');
 
 
-  function setAlert(type, html) {
-    resultado.className = 'alert alert-' + type;
-    resultado.innerHTML = html;
-  }
+    let estadoActual = null; // HABIL | INHABIL | NO_EXISTE | YA_VOTO
+    let asoActual = null;    // {id,nombre,correo}
+    let cacheUrnasJurado = null; 
+    let cacheUrnasTs = 0;
 
-  function limpiar() {
-    input.value = '';
-    estadoActual = null;
-    asoActual = null;
-    btnConfirmar.disabled = true;
-    btnAnular.disabled = true;
-    setAlert('secondary', 'Sin consulta.');
-    input.focus();
-  }
-
-
-
-async function cargarUrnasJurado({ targetId, mode = 'lista', force = false }) {
-  try {
-    // 1) Obtener datos (cache 60s)
-    let j = null;
-    const cacheOk = cacheUrnasJurado && (Date.now() - cacheUrnasTs) < 60_000;
-
-    if (!force && cacheOk) {
-      j = cacheUrnasJurado;
-    } else {
-      const r = await fetch('../../controladores/jurados_Controller.php?accion=4', { method: 'GET' });
-      const text = await r.text();
-      try { j = JSON.parse(text); } catch (e) { return; }
-      if (!j || !j.ok) return;
-
-      cacheUrnasJurado = j;
-      cacheUrnasTs = Date.now();
+    function blurActivo() {
+      try {
+        if (document.activeElement && typeof document.activeElement.blur === 'function') {
+          document.activeElement.blur();
+        }
+      } catch (e) {}
     }
 
-    // 2) Pintar
-    const el = document.getElementById(targetId);
-    if (!el) return;
 
-    const urnas = Array.isArray(j.urnas) ? j.urnas : [];
-    if (urnas.length === 0) {
-      el.textContent = (mode === 'principal_id') ? '' : 'Urnas: No asignadas';
-      return;
+    function setAlert(type, html) {
+      resultado.className = 'alert alert-' + type;
+      resultado.innerHTML = html;
     }
 
-    const principal = urnas.find(u => !u.es_otras) || urnas[0];
-
-    if (mode === 'principal_id') {
-      el.textContent = String(principal.id);
-      return;
-    }
-
-    if (mode === 'principal_txt') {
-      el.textContent = `Urna principal: ${principal.id} (${principal.nombre})`;
-      return;
-    }
-
-    // mode === 'lista'
-    el.textContent = 'Urnas asignadas: ' + urnas.map(u => `${u.id} (${u.nombre})`).join(' - ');
-
-  } catch (e) { /* silencioso */ }
-}
-
-
-async function postForm(url, data) {
-  const fd = new FormData();
-  Object.keys(data).forEach(k => fd.append(k, data[k]));
-
-  const r = await fetch(url, {
-    method: 'POST',
-    body: fd,
-    credentials: 'same-origin' //envía cookie de sesión PHP
-  });
-
-  const text = await r.text();
-  let j = null;
-
-  try { j = text ? JSON.parse(text) : null; }
-  catch (e) { j = null; }
-
-  // 401: timeout o no autorizado -> redirigir
-  if (r.status === 401) {
-    const redir = (j && j.redirect) ? j.redirect : '/inscripciones/vistas/jurados/login.php?timeout=1';
-    window.location.href = redir;
-    return null;
-  }
-
-  // Otros errores
-  if (!r.ok) {
-    if (j?.redirect) {
-      window.location.href = j.redirect;
-      return null;
-    }
-
-    const msg = j?.msg || (text ? text.substring(0, 300) : 'Respuesta vacía del servidor.');
-    throw new Error(msg);
-  }
-
-  if (!j) {
-    throw new Error(text ? text.substring(0, 300) : 'Respuesta vacía del servidor.');
-  }
-
-  return j;
-}
-
-
-
-  async function consultar() {
-    const aso_Id = (input.value || '').trim();
-    if (!aso_Id) {
-      setAlert('warning', 'Digite la cédula.');
+    function limpiar() {
+      input.value = '';
+      estadoActual = null;
+      asoActual = null;
+      btnConfirmar.disabled = true;
+      btnAnular.disabled = true;
+      setAlert('secondary', 'Sin consulta.');
       input.focus();
-      return;
     }
 
-    btnConfirmar.disabled = true;
-    btnAnular.disabled = true;
-    setAlert('info', 'Consultando...');
-
-    try {
-      const j = await postForm('../../controladores/jurados_Controller.php', { accion: 1, aso_Id });
-      if (!j) return;
-      estadoActual = j.estado || null;
-      asoActual = j.aso || null;
-      if (asoActual) {
-        asoActual.urna = j.urna || null;
-      }
-      const urnaTxt = asoActual?.urna
-        ? `<br><span class="badge badge-${asoActual.urna.es_otras ? 'warning' : 'info'}">
-            URNA ${asoActual.urna.id} — ${asoActual.urna.nombre}${asoActual.urna.es_otras ? ' (OTRAS AGENCIAS)' : ''}
-          </span>`
-        : '';
-
-      const puntoTxt = asoActual?.punto ? `<br>${asoActual.punto}` : '';
-
-      if (estadoActual === 'NO_EXISTE') {
-        setAlert('danger', '❌ ' + j.msg);
-        btnConfirmar.disabled = true;
-        btnAnular.disabled = true;
-        return;
-      }
-
-      if (estadoActual === 'INHABIL') {
-        setAlert('danger', `⛔ ${j.msg}<br><b>${asoActual?.nombre || ''}</b>`);
-        btnConfirmar.disabled = true;
-        return;
-      }
-
-      if (estadoActual === 'YA_VOTO') {
-        setAlert('warning', `⚠️ ${j.msg}<b><br>${asoActual?.nombre || ''}</b><br>${urnaTxt}<br>${puntoTxt}<br>Fecha: ${j.voto?.fecha || ''}`);
-        btnConfirmar.disabled = true;
-        btnAnular.disabled = false; 
-        return;
-      }
-
-      if (estadoActual === 'HABIL') {
-
-        setAlert('success', `✅ ${j.msg}${urnaTxt}<br><b>${asoActual?.nombre || ''}</b>${puntoTxt}`);
-        btnConfirmar.disabled = false;
-        return;
-      }
-
-      if (estadoActual === 'FUERA_URNA') {
-        blurActivo();
-        await Swal.fire({ icon: 'warning', title: 'Fuera de su urna', text: j.msg });
-        btnConfirmar.disabled = true;
-        btnAnular.disabled = true;
-        setAlert('warning', '⚠️ ' + j.msg);
-        return;
-      }
 
 
-      setAlert('secondary', j.msg || 'Sin estado.');
-    } catch (e) {
-      setAlert('danger', 'Error: ' + e.message);
+    async function cargarUrnasJurado({ targetId, mode = 'lista', force = false }) {
+      try {
+        // 1) Obtener datos (cache 60s)
+        let j = null;
+        const cacheOk = cacheUrnasJurado && (Date.now() - cacheUrnasTs) < 60_000;
+
+        if (!force && cacheOk) {
+          j = cacheUrnasJurado;
+        } else {
+          const r = await fetch('../../controladores/jurados_Controller.php?accion=4', { method: 'GET' });
+          const text = await r.text();
+          try { j = JSON.parse(text); } catch (e) { return; }
+          if (!j || !j.ok) return;
+
+          cacheUrnasJurado = j;
+          cacheUrnasTs = Date.now();
+        }
+
+        // 2) Pintar
+        const el = document.getElementById(targetId);
+        if (!el) return;
+
+        const urnas = Array.isArray(j.urnas) ? j.urnas : [];
+        if (urnas.length === 0) {
+          el.textContent = (mode === 'principal_id') ? '' : 'Urnas: No asignadas';
+          return;
+        }
+
+        const principal = urnas.find(u => !u.es_otras) || urnas[0];
+
+        if (mode === 'principal_id') {
+          el.textContent = String(principal.id);
+          return;
+        }
+
+        if (mode === 'principal_txt') {
+          el.textContent = `Urna principal: ${principal.id} (${principal.nombre})`;
+          return;
+        }
+
+        // mode === 'lista'
+        el.textContent = 'Urnas asignadas: ' + urnas.map(u => `${u.id} (${u.nombre})`).join(' - ');
+
+      } catch (e) { /* silencioso */ }
     }
-  }
 
-  async function cargarProgresoUrna() {
-    try {
-      const r = await fetch('../../controladores/jurados_Controller.php?accion=3', { method: 'GET' });
+
+    async function postForm(url, data) {
+      const fd = new FormData();
+      Object.keys(data).forEach(k => fd.append(k, data[k]));
+
+      const r = await fetch(url, {
+        method: 'POST',
+        body: fd,
+        credentials: 'same-origin' //envía cookie de sesión PHP
+      });
+
       const text = await r.text();
       let j = null;
-      try { j = JSON.parse(text); } catch (e) { return; }
-      if (!j || !j.ok) return;
 
-      document.getElementById('prog-inscritos').textContent = j.inscritos;
-      document.getElementById('prog-total').textContent = j.total;
-      document.getElementById('prog-faltan').textContent = j.faltan;
-      document.getElementById('progreso-urna').style.display = '';
-    } catch (e) {
-      // si falla, no mostramos el div
-      setAlert('danger', 'Error: ' + e.message);
+      try { j = text ? JSON.parse(text) : null; }
+      catch (e) { j = null; }
+
+      // 401: timeout o no autorizado -> redirigir
+      if (r.status === 401) {
+        const redir = (j && j.redirect) ? j.redirect : '/inscripciones/vistas/jurados/login.php?timeout=1';
+        window.location.href = redir;
+        return null;
+      }
+
+      // Otros errores
+      if (!r.ok) {
+        if (j?.redirect) {
+          window.location.href = j.redirect;
+          return null;
+        }
+
+        const msg = j?.msg || (text ? text.substring(0, 300) : 'Respuesta vacía del servidor.');
+        throw new Error(msg);
+      }
+
+      if (!j) {
+        throw new Error(text ? text.substring(0, 300) : 'Respuesta vacía del servidor.');
+      }
+
+      return j;
     }
-  }
 
 
 
-  async function registrarVoto() {
-    if (estadoActual !== 'HABIL' || !asoActual?.id) {
-      return;
+    async function consultar() {
+      const aso_Id = (input.value || '').trim();
+      if (!aso_Id) {
+        setAlert('warning', 'Digite la cédula.');
+        input.focus();
+        return;
+      }
+
+      btnConfirmar.disabled = true;
+      btnAnular.disabled = true;
+      setAlert('info', 'Consultando...');
+
+      try {
+        const j = await postForm('../../controladores/jurados_Controller.php', { accion: 1, aso_Id });
+        if (!j) return;
+        estadoActual = j.estado || null;
+        asoActual = j.aso || null;
+        if (asoActual) {
+          asoActual.urna = j.urna || null;
+        }
+        const urnaTxt = asoActual?.urna
+          ? `<br><span class="badge badge-${asoActual.urna.es_otras ? 'warning' : 'info'}">
+              URNA ${asoActual.urna.id} — ${asoActual.urna.nombre}${asoActual.urna.es_otras ? ' (OTRAS AGENCIAS)' : ''}
+            </span>`
+          : '';
+
+        const puntoTxt = asoActual?.punto ? `<br>${asoActual.punto}` : '';
+
+        if (estadoActual === 'NO_EXISTE') {
+          setAlert('danger', '❌ ' + j.msg);
+          btnConfirmar.disabled = true;
+          btnAnular.disabled = true;
+          return;
+        }
+
+        if (estadoActual === 'INHABIL') {
+          setAlert('danger', `⛔ ${j.msg}<br><b>${asoActual?.nombre || ''}</b>`);
+          btnConfirmar.disabled = true;
+          return;
+        }
+
+        if (estadoActual === 'YA_VOTO') {
+          setAlert('warning', `⚠️ ${j.msg}<b><br>${asoActual?.nombre || ''}</b><br>${urnaTxt}<br>${puntoTxt}<br>Fecha: ${j.voto?.fecha || ''}`);
+          btnConfirmar.disabled = true;
+          btnAnular.disabled = false; 
+          return;
+        }
+
+        if (estadoActual === 'HABIL') {
+
+          setAlert('success', `✅ ${j.msg}${urnaTxt}<br><b>${asoActual?.nombre || ''}</b>${puntoTxt}`);
+          btnConfirmar.disabled = false;
+          return;
+        }
+
+        if (estadoActual === 'FUERA_URNA') {
+          blurActivo();
+          await Swal.fire({ icon: 'warning', title: 'Fuera de su urna', text: j.msg });
+          btnConfirmar.disabled = true;
+          btnAnular.disabled = true;
+          setAlert('warning', '⚠️ ' + j.msg);
+          return;
+        }
+
+
+        setAlert('secondary', j.msg || 'Sin estado.');
+      } catch (e) {
+        setAlert('danger', 'Error: ' + e.message);
+      }
     }
-    blurActivo();
 
-    const urnaLine = asoActual?.urna
-      ? `<div style="margin-top:6px;">
-          <small><b>Urna:</b> ${asoActual.urna.id} — ${asoActual.urna.nombre}
-          ${asoActual.urna.es_otras ? ' <br><span class="badge badge-warning">OTRAS AGENCIAS</span>' : ''}</small>
-        </div>`
-      : '';
+    async function cargarProgresoUrna() {
+      try {
+        const r = await fetch('../../controladores/jurados_Controller.php?accion=3', { method: 'GET' });
+        const text = await r.text();
+        let j = null;
+        try { j = JSON.parse(text); } catch (e) { return; }
+        if (!j || !j.ok) return;
 
-    const puntoLine = asoActual?.punto ? `<div><small>${asoActual.punto}</small></div>` : '';
+        document.getElementById('prog-inscritos').textContent = j.inscritos;
+        document.getElementById('prog-total').textContent = j.total;
+        document.getElementById('prog-faltan').textContent = j.faltan;
+        document.getElementById('progreso-urna').style.display = '';
+      } catch (e) {
+        // si falla, no mostramos el div
+        setAlert('danger', 'Error: ' + e.message);
+      }
+    }
 
-    const confirm = await Swal.fire({
-      icon: 'question',
-      title: '¿Registrar voto?',
-      html: `<b>${asoActual.nombre}</b><br>${asoActual.id}${puntoLine}${urnaLine}`,
-      showCancelButton: true,
-      confirmButtonText: 'Sí, registrar',
-      cancelButtonText: 'Cancelar',
-      reverseButtons: true
+
+
+    async function registrarVoto() {
+      if (estadoActual !== 'HABIL' || !asoActual?.id) {
+        return;
+      }
+      blurActivo();
+
+      const urnaLine = asoActual?.urna
+        ? `<div style="margin-top:6px;">
+            <small><b>Urna:</b> ${asoActual.urna.id} — ${asoActual.urna.nombre}
+            ${asoActual.urna.es_otras ? ' <br><span class="badge badge-warning">OTRAS AGENCIAS</span>' : ''}</small>
+          </div>`
+        : '';
+
+      const puntoLine = asoActual?.punto ? `<div><small>${asoActual.punto}</small></div>` : '';
+
+      const confirm = await Swal.fire({
+        icon: 'question',
+        title: '¿Registrar voto?',
+        html: `<b>${asoActual.nombre}</b><br>${asoActual.id}${puntoLine}${urnaLine}`,
+        showCancelButton: true,
+        confirmButtonText: 'Sí, registrar',
+        cancelButtonText: 'Cancelar',
+        reverseButtons: true
+      });
+
+
+      if (!confirm.isConfirmed) {
+        limpiar();
+        return;
+      }
+
+      // Confirmado
+      try {
+        const j = await postForm('../../controladores/jurados_Controller.php', { accion: 2, aso_Id: asoActual.id, decision: 'CONFIRMAR' });
+        if (!j) return;
+
+        const urnaResp = j.urna || asoActual?.urna || null;
+
+        const urnaOkLine = urnaResp
+          ? `Urna: ${urnaResp.id} — ${urnaResp.nombre}${urnaResp.es_otras ? ' (OTRAS AGENCIAS)' : ''}`
+          : null;
+
+
+        blurActivo();
+        await Swal.fire({
+          icon: j.email_enviado ? 'success' : 'warning',
+          title: 'Voto registrado',
+          html: `${j.msg || 'Voto registrado.'}${urnaOkLine ? `<br><small><b>${urnaOkLine}</b></small>` : ''}`
+        });
+        cargarProgresoUrna();
+        limpiar();
+      } catch (e) {
+        blurActivo();
+        await Swal.fire({ icon: 'error', title: 'Error', text: e.message });
+      }
+    }
+
+    async function anularVoto() {
+      if (estadoActual !== 'YA_VOTO' || !asoActual?.id) return;
+      
+      blurActivo();
+      const confirm = await Swal.fire({
+        icon: 'warning',
+        title: '¿Anular voto?',
+        html: `<b>${asoActual.nombre}</b><br>${asoActual.id}`,
+        showCancelButton: true,
+        confirmButtonText: 'Sí, anular',
+        cancelButtonText: 'No',
+        reverseButtons: true
+      });
+
+      if (!confirm.isConfirmed) return;
+
+      try {
+        const j = await postForm('../../controladores/jurados_Controller.php', {
+          accion: 2,
+          aso_Id: asoActual.id,
+          decision: 'ANULAR'
+        });
+        if (!j) return;
+
+        await Swal.fire({ icon: 'success', title: 'Listo', text: j.msg });
+        cargarProgresoUrna();
+        limpiar();
+      } catch (e) {
+        await Swal.fire({ icon: 'error', title: 'Error', text: e.message });
+      }
+    }
+
+
+    btnConsultar.addEventListener('click', consultar);
+    btnConfirmar.addEventListener('click', registrarVoto);
+    btnLimpiar.addEventListener('click', limpiar);
+    btnAnular.addEventListener('click', anularVoto);
+    input.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') {
+        ev.preventDefault();
+        consultar();
+      }
     });
 
+    limpiar();
+    cargarUrnasJurado({ targetId: 'jurado-urnas', mode: 'lista' });
+    cargarUrnasJurado({ targetId: 'reg-urna', mode: 'principal_id' });
+    cargarProgresoUrna();
+  })();
 
-    if (!confirm.isConfirmed) {
-      limpiar();
-      return;
-    }
-
-    // Confirmado
-    try {
-      const j = await postForm('../../controladores/jurados_Controller.php', { accion: 2, aso_Id: asoActual.id, decision: 'CONFIRMAR' });
-      if (!j) return;
-
-      const urnaResp = j.urna || asoActual?.urna || null;
-
-      const urnaOkLine = urnaResp
-        ? `Urna: ${urnaResp.id} — ${urnaResp.nombre}${urnaResp.es_otras ? ' (OTRAS AGENCIAS)' : ''}`
-        : null;
-
-
-      blurActivo();
-      await Swal.fire({
-        icon: j.email_enviado ? 'success' : 'warning',
-        title: 'Voto registrado',
-        html: `${j.msg || 'Voto registrado.'}${urnaOkLine ? `<br><small><b>${urnaOkLine}</b></small>` : ''}`
-      });
-      cargarProgresoUrna();
-      limpiar();
-    } catch (e) {
-      blurActivo();
-      await Swal.fire({ icon: 'error', title: 'Error', text: e.message });
-    }
-  }
-
-  async function anularVoto() {
-    if (estadoActual !== 'YA_VOTO' || !asoActual?.id) return;
-    
-    blurActivo();
-    const confirm = await Swal.fire({
-      icon: 'warning',
-      title: '¿Anular voto?',
-      html: `<b>${asoActual.nombre}</b><br>${asoActual.id}`,
-      showCancelButton: true,
-      confirmButtonText: 'Sí, anular',
-      cancelButtonText: 'No',
-      reverseButtons: true
-    });
-
-    if (!confirm.isConfirmed) return;
-
-    try {
-      const j = await postForm('../../controladores/jurados_Controller.php', {
-        accion: 2,
-        aso_Id: asoActual.id,
-        decision: 'ANULAR'
-      });
-      if (!j) return;
-
-      await Swal.fire({ icon: 'success', title: 'Listo', text: j.msg });
-      cargarProgresoUrna();
-      limpiar();
-    } catch (e) {
-      await Swal.fire({ icon: 'error', title: 'Error', text: e.message });
-    }
-}
-
-
-  btnConsultar.addEventListener('click', consultar);
-  btnConfirmar.addEventListener('click', registrarVoto);
-  btnLimpiar.addEventListener('click', limpiar);
-  btnAnular.addEventListener('click', anularVoto);
-  input.addEventListener('keydown', (ev) => {
-    if (ev.key === 'Enter') {
-      ev.preventDefault();
-      consultar();
-    }
+  window.addEventListener('pageshow', (e) => {
+    if (e.persisted) window.location.reload();
   });
-
-  limpiar();
-  cargarUrnasJurado({ targetId: 'jurado-urnas', mode: 'lista' });
-  cargarUrnasJurado({ targetId: 'reg-urna', mode: 'principal_id' });
-  cargarProgresoUrna();
-})();
 </script>
+
 </body>
 </html>
