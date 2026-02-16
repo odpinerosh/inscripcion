@@ -77,7 +77,8 @@ $jurado_nombre = $_SESSION['JUR_NOMBRE'] ?? $jurado;
 
       <div class="d-flex justify-content-between align-items-center mt-2">
         <span class="text-muted">
-          Bienvenido, <b><?= htmlspecialchars($jurado_nombre) ?></b>
+          Jurado: <b><?= htmlspecialchars($jurado_nombre) ?></b><br>
+          <small id="jurado-urnas" class="text-muted"></small>
         </span>
 
         <a class="btn btn-sm btn-outline-danger"
@@ -108,6 +109,10 @@ $jurado_nombre = $_SESSION['JUR_NOMBRE'] ?? $jurado;
         <div class="col-12 col-md-5 mb-2">
           <button class="btn btn-success btn-lg btn-block" id="btnConfirmar" disabled>Registrar voto</button>
         </div>
+        <div class="col-12 mb-2">
+          <button class="btn btn-danger btn-lg btn-block" id="btnAnular" disabled>Anular voto</button>
+        </div>
+
       </div>
 
 
@@ -120,9 +125,9 @@ $jurado_nombre = $_SESSION['JUR_NOMBRE'] ?? $jurado;
       <div class="small text-muted">
         Nota: Si el votante está <b>inhábil</b> o <b>ya votó</b>, el sistema no permitirá registrar voto.
       </div>
-      <div id="progreso-urna" class="alert alert-info mt-3 mb-0" style="display:none;">
-        <b>Progreso:</b>
-        Inscritos <span id="prog-inscritos">0</span> de <span id="prog-total">0</span> — Faltan <span id="prog-faltan">0</span>
+      <div id="progreso-urna" class="alert alert-info mt-3 mb-0" style="display: none;">
+        <b>Progreso urna <span id="reg-urna"></span>:</b>
+        <span id="prog-inscritos">0</span> de <span id="prog-total">0</span> — Faltan <span id="prog-faltan">0</span>
       </div>
 
 
@@ -139,9 +144,13 @@ $jurado_nombre = $_SESSION['JUR_NOMBRE'] ?? $jurado;
   const btnConfirmar = $$('btnConfirmar');
   const btnLimpiar = $$('btnLimpiar');
   const resultado = $$('resultado');
+  const btnAnular = $$('btnAnular');
+
 
   let estadoActual = null; // HABIL | INHABIL | NO_EXISTE | YA_VOTO
   let asoActual = null;    // {id,nombre,correo}
+  let cacheUrnasJurado = null; 
+  let cacheUrnasTs = 0;
 
   function blurActivo() {
     try {
@@ -162,43 +171,101 @@ $jurado_nombre = $_SESSION['JUR_NOMBRE'] ?? $jurado;
     estadoActual = null;
     asoActual = null;
     btnConfirmar.disabled = true;
+    btnAnular.disabled = true;
     setAlert('secondary', 'Sin consulta.');
     input.focus();
   }
 
-  async function postForm(url, data) {
-    const fd = new FormData();
-    Object.keys(data).forEach(k => fd.append(k, data[k]));
 
-    const r = await fetch(url, { method: 'POST', body: fd });
 
-    const text = await r.text();   // leer texto primero
+async function cargarUrnasJurado({ targetId, mode = 'lista', force = false }) {
+  try {
+    // 1) Obtener datos (cache 60s)
     let j = null;
+    const cacheOk = cacheUrnasJurado && (Date.now() - cacheUrnasTs) < 60_000;
 
-    try { j = JSON.parse(text); }
-    catch (e) {
-      throw new Error(text ? text.substring(0, 300) : 'Respuesta vacía del servidor.');
+    if (!force && cacheOk) {
+      j = cacheUrnasJurado;
+    } else {
+      const r = await fetch('../../controladores/jurados_Controller.php?accion=4', { method: 'GET' });
+      const text = await r.text();
+      try { j = JSON.parse(text); } catch (e) { return; }
+      if (!j || !j.ok) return;
+
+      cacheUrnasJurado = j;
+      cacheUrnasTs = Date.now();
     }
 
-    if (!r.ok) {
-      // Si es 401, redirigir siempre (timeout o no autorizado)
-      if (r.status === 401) {
-        window.location.href = '/inscripciones/vistas/jurados/login.php?timeout=1';
-        return; // corta el flujo
-      }
+    // 2) Pintar
+    const el = document.getElementById(targetId);
+    if (!el) return;
 
-      // Si el backend manda redirect explícito, úsalo
-      if (j?.redirect) {
-        window.location.href = j.redirect;
-        return;
-      }
-
-      throw new Error(j?.msg || 'Error');
+    const urnas = Array.isArray(j.urnas) ? j.urnas : [];
+    if (urnas.length === 0) {
+      el.textContent = (mode === 'principal_id') ? '' : 'Urnas: No asignadas';
+      return;
     }
 
-    return j;
+    const principal = urnas.find(u => !u.es_otras) || urnas[0];
 
+    if (mode === 'principal_id') {
+      el.textContent = String(principal.id);
+      return;
+    }
+
+    if (mode === 'principal_txt') {
+      el.textContent = `Urna principal: ${principal.id} (${principal.nombre})`;
+      return;
+    }
+
+    // mode === 'lista'
+    el.textContent = 'Urnas asignadas: ' + urnas.map(u => `${u.id} (${u.nombre})`).join(' - ');
+
+  } catch (e) { /* silencioso */ }
+}
+
+
+async function postForm(url, data) {
+  const fd = new FormData();
+  Object.keys(data).forEach(k => fd.append(k, data[k]));
+
+  const r = await fetch(url, {
+    method: 'POST',
+    body: fd,
+    credentials: 'same-origin' //envía cookie de sesión PHP
+  });
+
+  const text = await r.text();
+  let j = null;
+
+  try { j = text ? JSON.parse(text) : null; }
+  catch (e) { j = null; }
+
+  // 401: timeout o no autorizado -> redirigir
+  if (r.status === 401) {
+    const redir = (j && j.redirect) ? j.redirect : '/inscripciones/vistas/jurados/login.php?timeout=1';
+    window.location.href = redir;
+    return null;
   }
+
+  // Otros errores
+  if (!r.ok) {
+    if (j?.redirect) {
+      window.location.href = j.redirect;
+      return null;
+    }
+
+    const msg = j?.msg || (text ? text.substring(0, 300) : 'Respuesta vacía del servidor.');
+    throw new Error(msg);
+  }
+
+  if (!j) {
+    throw new Error(text ? text.substring(0, 300) : 'Respuesta vacía del servidor.');
+  }
+
+  return j;
+}
+
 
 
   async function consultar() {
@@ -210,16 +277,29 @@ $jurado_nombre = $_SESSION['JUR_NOMBRE'] ?? $jurado;
     }
 
     btnConfirmar.disabled = true;
+    btnAnular.disabled = true;
     setAlert('info', 'Consultando...');
 
     try {
       const j = await postForm('../../controladores/jurados_Controller.php', { accion: 1, aso_Id });
+      if (!j) return;
       estadoActual = j.estado || null;
       asoActual = j.aso || null;
+      if (asoActual) {
+        asoActual.urna = j.urna || null;
+      }
+      const urnaTxt = asoActual?.urna
+        ? `<br><span class="badge badge-${asoActual.urna.es_otras ? 'warning' : 'info'}">
+            URNA ${asoActual.urna.id} — ${asoActual.urna.nombre}${asoActual.urna.es_otras ? ' (OTRAS AGENCIAS)' : ''}
+          </span>`
+        : '';
+
+      const puntoTxt = asoActual?.punto ? `<br>${asoActual.punto}` : '';
 
       if (estadoActual === 'NO_EXISTE') {
         setAlert('danger', '❌ ' + j.msg);
         btnConfirmar.disabled = true;
+        btnAnular.disabled = true;
         return;
       }
 
@@ -230,23 +310,24 @@ $jurado_nombre = $_SESSION['JUR_NOMBRE'] ?? $jurado;
       }
 
       if (estadoActual === 'YA_VOTO') {
-        setAlert('warning', `⚠️ ${j.msg}<br><b>${asoActual?.nombre || ''}</b><br>Fecha: ${j.voto?.fecha || ''}`);
+        setAlert('warning', `⚠️ ${j.msg}<b><br>${asoActual?.nombre || ''}</b><br>${urnaTxt}<br>${puntoTxt}<br>Fecha: ${j.voto?.fecha || ''}`);
         btnConfirmar.disabled = true;
+        btnAnular.disabled = false; 
         return;
       }
 
       if (estadoActual === 'HABIL') {
-        const punto = asoActual?.punto ? `<br>${asoActual.punto}` : '';
-        setAlert('success', `✅ ${j.msg}${punto}<br><b>${asoActual?.nombre || ''}</b><br>`);
+
+        setAlert('success', `✅ ${j.msg}${urnaTxt}<br><b>${asoActual?.nombre || ''}</b>${puntoTxt}`);
         btnConfirmar.disabled = false;
         return;
       }
-
 
       if (estadoActual === 'FUERA_URNA') {
         blurActivo();
         await Swal.fire({ icon: 'warning', title: 'Fuera de su urna', text: j.msg });
         btnConfirmar.disabled = true;
+        btnAnular.disabled = true;
         setAlert('warning', '⚠️ ' + j.msg);
         return;
       }
@@ -272,6 +353,7 @@ $jurado_nombre = $_SESSION['JUR_NOMBRE'] ?? $jurado;
       document.getElementById('progreso-urna').style.display = '';
     } catch (e) {
       // si falla, no mostramos el div
+      setAlert('danger', 'Error: ' + e.message);
     }
   }
 
@@ -282,23 +364,28 @@ $jurado_nombre = $_SESSION['JUR_NOMBRE'] ?? $jurado;
       return;
     }
     blurActivo();
+
+    const urnaLine = asoActual?.urna
+      ? `<div style="margin-top:6px;">
+          <small><b>Urna:</b> ${asoActual.urna.id} — ${asoActual.urna.nombre}
+          ${asoActual.urna.es_otras ? ' <br><span class="badge badge-warning">OTRAS AGENCIAS</span>' : ''}</small>
+        </div>`
+      : '';
+
+    const puntoLine = asoActual?.punto ? `<div><small>${asoActual.punto}</small></div>` : '';
+
     const confirm = await Swal.fire({
       icon: 'question',
       title: '¿Registrar voto?',
-      html: `<b>${asoActual.nombre}</b><br>${asoActual.id}<br><small></small>`,
+      html: `<b>${asoActual.nombre}</b><br>${asoActual.id}${puntoLine}${urnaLine}`,
       showCancelButton: true,
       confirmButtonText: 'Sí, registrar',
       cancelButtonText: 'Cancelar',
       reverseButtons: true
     });
 
+
     if (!confirm.isConfirmed) {
-      // Cancelación registrada
-      try {
-        await postForm('/../../controladores/jurados_Controller.php', { accion: 2, aso_Id: asoActual.id, decision: 'CANCELAR' });
-      } catch (e) {
-        // no bloquea el flujo
-      }
       limpiar();
       return;
     }
@@ -306,11 +393,20 @@ $jurado_nombre = $_SESSION['JUR_NOMBRE'] ?? $jurado;
     // Confirmado
     try {
       const j = await postForm('../../controladores/jurados_Controller.php', { accion: 2, aso_Id: asoActual.id, decision: 'CONFIRMAR' });
+      if (!j) return;
+
+      const urnaResp = j.urna || asoActual?.urna || null;
+
+      const urnaOkLine = urnaResp
+        ? `Urna: ${urnaResp.id} — ${urnaResp.nombre}${urnaResp.es_otras ? ' (OTRAS AGENCIAS)' : ''}`
+        : null;
+
+
       blurActivo();
       await Swal.fire({
         icon: j.email_enviado ? 'success' : 'warning',
         title: 'Voto registrado',
-        text: j.msg
+        html: `${j.msg || 'Voto registrado.'}${urnaOkLine ? `<br><small><b>${urnaOkLine}</b></small>` : ''}`
       });
       cargarProgresoUrna();
       limpiar();
@@ -320,10 +416,43 @@ $jurado_nombre = $_SESSION['JUR_NOMBRE'] ?? $jurado;
     }
   }
 
+  async function anularVoto() {
+    if (estadoActual !== 'YA_VOTO' || !asoActual?.id) return;
+    
+    blurActivo();
+    const confirm = await Swal.fire({
+      icon: 'warning',
+      title: '¿Anular voto?',
+      html: `<b>${asoActual.nombre}</b><br>${asoActual.id}`,
+      showCancelButton: true,
+      confirmButtonText: 'Sí, anular',
+      cancelButtonText: 'No',
+      reverseButtons: true
+    });
+
+    if (!confirm.isConfirmed) return;
+
+    try {
+      const j = await postForm('../../controladores/jurados_Controller.php', {
+        accion: 2,
+        aso_Id: asoActual.id,
+        decision: 'ANULAR'
+      });
+      if (!j) return;
+
+      await Swal.fire({ icon: 'success', title: 'Listo', text: j.msg });
+      cargarProgresoUrna();
+      limpiar();
+    } catch (e) {
+      await Swal.fire({ icon: 'error', title: 'Error', text: e.message });
+    }
+}
+
+
   btnConsultar.addEventListener('click', consultar);
   btnConfirmar.addEventListener('click', registrarVoto);
   btnLimpiar.addEventListener('click', limpiar);
-
+  btnAnular.addEventListener('click', anularVoto);
   input.addEventListener('keydown', (ev) => {
     if (ev.key === 'Enter') {
       ev.preventDefault();
@@ -332,6 +461,8 @@ $jurado_nombre = $_SESSION['JUR_NOMBRE'] ?? $jurado;
   });
 
   limpiar();
+  cargarUrnasJurado({ targetId: 'jurado-urnas', mode: 'lista' });
+  cargarUrnasJurado({ targetId: 'reg-urna', mode: 'principal_id' });
   cargarProgresoUrna();
 })();
 </script>
