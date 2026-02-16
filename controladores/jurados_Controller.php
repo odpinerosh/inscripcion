@@ -158,6 +158,14 @@
     return null;
   }
 
+    // Helper simple para permisos de reportes
+  function puede_ver_reportes() {
+    $rol  = strtolower(trim((string)($_SESSION['JUR_ROL'] ?? '')));
+    $user = strtolower(trim((string)($_SESSION['JUR_USER'] ?? '')));
+    $permitidos = ['admin','39581549','51589322','11798151'];
+    return ($rol === 'superadmin' || in_array($user, $permitidos, true));
+  }
+
 
 
   $accion = isset($_REQUEST['accion']) ? (int)$_REQUEST['accion'] : 0;
@@ -626,5 +634,88 @@
 
     respond(['ok' => true, 'urnas' => $urnas]);
   }
+
+  if ($accion === 30) {
+    if (!puede_ver_reportes()) respond(['ok'=>false,'msg'=>'No autorizado.'], 403);
+
+    $data = [];
+    $sql = "SELECT u.punto_Id AS punto_id,
+                  COALESCE(p.punto_Nombre, CONCAT('Punto ', u.punto_Id)) AS punto,
+                  COUNT(*) AS confirmados
+            FROM elecciones_votos ev
+            JOIN urnas u ON u.urna_Id = ev.urna_Id
+            LEFT JOIN ptos_atencion p ON p.punto_Id = u.punto_Id
+            WHERE ev.accion = 'CONFIRMADO'
+            GROUP BY u.punto_Id, p.punto_Nombre
+            ORDER BY confirmados DESC, punto ASC";
+    $res = $conn->query($sql);
+    if ($res) {
+      while ($row = $res->fetch_assoc()) {
+        $data[] = [
+          'punto_id' => (int)$row['punto_id'],
+          'punto' => $row['punto'],
+          'confirmados' => (int)$row['confirmados'],
+        ];
+      }
+      $res->free();
+    }
+    respond(['ok'=>true,'data'=>$data]);
+  }
+
+  if ($accion === 31) {
+    if (!puede_ver_reportes()) respond(['ok'=>false,'msg'=>'No autorizado.'], 403);
+
+    $data = [];
+    $sql = "SELECT u.punto_Id AS punto_id,
+                  COALESCE(p.punto_Nombre, CONCAT('Punto ', u.punto_Id)) AS punto,
+                  u.urna_Id AS urna_id,
+                  u.urna_Nombre AS urna,
+                  COUNT(*) AS confirmados
+            FROM elecciones_votos ev
+            JOIN urnas u ON u.urna_Id = ev.urna_Id
+            LEFT JOIN ptos_atencion p ON p.punto_Id = u.punto_Id
+            WHERE ev.accion = 'CONFIRMADO'
+            GROUP BY u.punto_Id, p.punto_Nombre, u.urna_Id, u.urna_Nombre
+            ORDER BY punto ASC, u.urna_Id ASC";
+    $res = $conn->query($sql);
+    if ($res) {
+      while ($row = $res->fetch_assoc()) {
+        $data[] = [
+          'punto_id' => (int)$row['punto_id'],
+          'punto' => $row['punto'],
+          'urna_id' => (int)$row['urna_id'],
+          'urna' => $row['urna'],
+          'confirmados' => (int)$row['confirmados'],
+        ];
+      }
+      $res->free();
+    }
+    respond(['ok'=>true,'data'=>$data]);
+  }
+
+  if ($accion === 32) {
+    if (!puede_ver_reportes()) respond(['ok'=>false,'msg'=>'No autorizado.'], 403);
+
+    $data = [];
+    $sql = "SELECT jurado_usuario AS jurado,
+                  SUM(CASE WHEN accion='CONFIRMADO' THEN 1 ELSE 0 END) AS confirmados,
+                  SUM(CASE WHEN accion='CANCELADO' THEN 1 ELSE 0 END) AS cancelados
+            FROM elecciones_votos
+            GROUP BY jurado_usuario
+            ORDER BY confirmados DESC, jurado ASC";
+    $res = $conn->query($sql);
+    if ($res) {
+      while ($row = $res->fetch_assoc()) {
+        $data[] = [
+          'jurado' => $row['jurado'],
+          'confirmados' => (int)$row['confirmados'],
+          'cancelados' => (int)$row['cancelados'],
+        ];
+      }
+      $res->free();
+    }
+    respond(['ok'=>true,'data'=>$data]);
+  }
+
 
   respond(['ok' => false, 'msg' => 'Acción no válida.'], 400);
