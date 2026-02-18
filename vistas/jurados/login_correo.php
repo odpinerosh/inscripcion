@@ -1,0 +1,130 @@
+<?php
+  session_start();
+
+  header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+  header('Cache-Control: post-check=0, pre-check=0', false);
+  header('Pragma: no-cache');
+  header('Expires: 0');
+
+  // Solo borrar sesión si viene explícitamente de logout/timeout
+  if (isset($_GET['logout']) || isset($_GET['timeout'])) {
+    session_unset();
+    session_destroy();
+    session_start(); // reabre sesión limpia para la página
+  }
+
+  if (!empty($_SESSION['JUR_USER'])) {
+    header('Location: /inscripciones/vistas/jurados/jurados.php');
+    exit;
+  }
+?>
+
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Login Jurados - Elecciones 2026</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/png" href="../../images/logoIColor.png">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <style>
+    :root{
+      --brand:#0b2a4a;
+      --brand-2:#08a750;
+      --bg:#f5f6f8;
+    }
+    body {
+      background: #f8f9fa;
+    }
+
+    .jurados-logo {
+      max-width: 360px;  
+      width: 100%;
+      height: auto;
+      display: inline-block;
+    }
+
+    .muted{ color:#6b7280; font-size:.875rem; }
+    .brand-title{ font-weight: 800; color: var(--brand); }
+  </style>
+</head>
+<body class="bg-light">
+<div class="container" style="max-width: 520px; padding-top: 60px;">
+  <div class="card shadow-sm">
+    <div class="card-header brand-title">
+        <div class="text-center p-3">
+            <img src="/inscripciones/images/logoSloganColor.png" alt="COOPTRAISS" class="img-fluid jurados-logo">
+        </div>
+        <div class="brand-title">Ingreso DIRECTORES</div>
+        <div class="muted">Uso interno - Directores Cooptraiss</div>
+    </div>
+    <div class="card-body">
+        <?php if (isset($_GET['timeout']) && $_GET['timeout'] == '1'): ?>
+            <div class="alert alert-warning">
+                Su sesión expiró por inactividad (15 minutos). Inicie sesión nuevamente.
+            </div>
+        <?php endif; ?>
+      <div class="form-group">
+        <label>Usuario</label>
+        <input id="usuario" class="form-control" autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label>Contraseña</label>
+        <input id="pass" type="password" class="form-control" autocomplete="current-password">
+      </div>
+      <button id="btn" class="btn btn-primary btn-block">Ingresar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(async () => {
+  const usuario = document.getElementById('usuario');
+  const pass = document.getElementById('pass');
+  const btn = document.getElementById('btn');
+
+  async function postForm(url, data) {
+    const fd = new FormData();
+    Object.keys(data).forEach(k => fd.append(k, data[k]));
+
+    const r = await fetch(url, { method: 'POST', body: fd });
+
+    const text = await r.text(); 
+    let j = null;
+
+    try { j = JSON.parse(text); }
+    catch (e) {
+      
+      throw new Error(text ? text.substring(0, 300) : 'Respuesta vacía del servidor.');
+    }
+
+    if (!r.ok) throw new Error(j?.msg || 'Error');
+    return j;
+  }
+
+
+  async function login() {
+    btn.disabled = true;
+    try {
+      const j = await postForm('/inscripciones/controladores/jurados_login_Controller.php', {
+        usuario: usuario.value.trim(),
+        pass: pass.value
+      });
+      window.location.href = j?.redirect || '/inscripciones/vistas/jurados/jurcorreo.php';
+    } catch (e) {
+      await Swal.fire({ icon: 'error', title: 'No fue posible ingresar', text: e.message });
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  btn.addEventListener('click', login);
+  pass.addEventListener('keydown', (ev) => {
+    if (ev.key === 'Enter') login();
+  });
+})();
+</script>
+</body>
+</html>
